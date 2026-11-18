@@ -1,0 +1,8 @@
+{
+  "port": 8830,
+  "portRangeStart": 8830,
+  "portRangeEnd": 8832,
+  "mode": "desktop",
+  "workspace": "workspace",
+  "storage": "sqlite"
+}

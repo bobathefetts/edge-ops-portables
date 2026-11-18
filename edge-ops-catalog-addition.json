@@ -1,0 +1,60 @@
+{
+  "ports_psd1_entries": {
+    "byob": { "Start": 8830, "Size": 3, "Policy": "reuse" },
+    "yap": { "Start": 8835, "Size": 3, "Policy": "reuse" }
+  },
+  "catalog_tools": [
+    {
+      "id": "byob",
+      "name": "BYOB Portable",
+      "category": "data-ai",
+      "group": "local-ai",
+      "summary": "Local AI agent harness (Bring Your Own Brain) packaged in Edge-Ops portable format with self-contained state, headless .lnk launcher, and loopback proxy.",
+      "tagline": "Local AI agent coworker with workspace files, sheets, charts, and docs.",
+      "launcher": "BYOB.lnk",
+      "defaultPort": 8830,
+      "requirements": {
+        "ps51": true,
+        "chromeEngine": true,
+        "batch": true,
+        "vbs": false,
+        "admin": false,
+        "installs": false,
+        "network": false,
+        "csharpRuntimeCompile": true,
+        "gpu": false,
+        "outlook": false
+      },
+      "status": "prototype",
+      "external": true,
+      "externalSource": "https://github.com/Scronkfinkle/byob",
+      "releases": null
+    },
+    {
+      "id": "yap",
+      "name": "Yap Portable",
+      "category": "ps-host-browser-ui",
+      "group": "voice-learning",
+      "summary": "Private push-to-talk Windows dictation (Whisper + llama.cpp cleanup) converted to a zero-install Edge-Ops folder with a local status/settings UI.",
+      "tagline": "Hold Ctrl+Win, speak, and paste cleaned dictation locally.",
+      "launcher": "Yap.lnk",
+      "defaultPort": 8835,
+      "requirements": {
+        "ps51": true,
+        "chromeEngine": true,
+        "batch": true,
+        "vbs": false,
+        "admin": false,
+        "installs": false,
+        "network": false,
+        "csharpRuntimeCompile": false,
+        "gpu": false,
+        "outlook": false
+      },
+      "status": "prototype",
+      "external": true,
+      "externalSource": "https://github.com/bobathefetts/yap",
+      "releases": null
+    }
+  ]
+}

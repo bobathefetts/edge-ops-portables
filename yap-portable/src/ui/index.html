@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Yap Portable - Edge-Ops</title>
+  <style>
+    :root {
+      --bg: #0c1118;
+      --panel: #131b26;
+      --border: #223044;
+      --text: #e6edf6;
+      --muted: #93a4ba;
+      --accent: #38bdf8;
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --bad: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 24px 18px 40px; }
+    header {
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 20px;
+    }
+    h1 { margin: 0; font-size: 22px; letter-spacing: 0.02em; }
+    .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px;
+      border-radius: 999px; background: var(--panel); border: 1px solid var(--border); font-size: 13px;
+    }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--warn); }
+    .dot.ready { background: var(--ok); }
+    .dot.dead { background: var(--bad); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 18px; }
+    .card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px;
+    }
+    .card h2 { margin: 0 0 10px; font-size: 15px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; }
+    .kv { display: grid; grid-template-columns: 120px 1fr; gap: 6px 10px; font-size: 13px; }
+    .k { color: var(--muted); }
+    label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+    input[type=text], select, textarea {
+      width: 100%; background: #0b1017; color: var(--text); border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px 10px; font-family: inherit; font-size: 13px;
+    }
+    textarea { min-height: 64px; resize: vertical; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+    button {
+      background: #1d2a3a; color: var(--text); border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px 14px; font-size: 13px; cursor: pointer;
+    }
+    button.primary { background: #0ea5e9; border-color: #0ea5e9; color: #05131f; font-weight: 600; }
+    button.danger { background: #451a1a; border-color: #7f1d1d; color: #fecaca; }
+    button:hover { filter: brightness(1.1); }
+    .hist-item {
+      border-top: 1px solid var(--border); padding: 10px 0; font-size: 13px;
+    }
+    .hist-item:first-child { border-top: none; padding-top: 0; }
+    .hist-meta { color: var(--muted); font-size: 11px; margin-bottom: 3px; }
+    code { background: #0b1017; padding: 2px 5px; border-radius: 4px; font-size: 12px; }
+    #msg { font-size: 12px; color: var(--ok); margin-left: 6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Yap Portable <span style="color:var(--muted);font-weight:400;font-size:14px;">Edge-Ops Host</span></h1>
+        <div class="sub">Zero-install push-to-talk dictation &mdash; all models, settings, logs, and history stay inside this folder.</div>
+      </div>
+      <div class="pill">
+        <span class="dot" id="dot"></span>
+        <span id="statusText">Loading...</span>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Runtime</h2>
+        <div class="kv">
+          <div class="k">Hotkey</div><div id="kvHotkey">-</div>
+          <div class="k">Device</div><div id="kvDevice">-</div>
+          <div class="k">Speech model</div><div id="kvWhisper">-</div>
+          <div class="k">Cleanup model</div><div id="kvLlm">-</div>
+          <div class="k">Data folder</div><div><code id="kvData">-</code></div>
+          <div class="k">Yap PID</div><div id="kvPid">-</div>
+        </div>
+        <div class="row">
+          <button onclick="reloadYap()">Reload Settings</button>
+          <button class="danger" onclick="shutdownYap()">Stop Yap</button>
+          <span id="msg"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Quick Settings</h2>
+        <label for="cfgHotkey">Push-to-talk Hotkey (restart Yap after changing)</label>
+        <input type="text" id="cfgHotkey" placeholder="ctrl+win">
+        <label for="cfgDict">Custom Dictionary (comma-separated spellings)</label>
+        <input type="text" id="cfgDict" placeholder="Ollama, Whisper">
+        <label for="cfgExtra">Extra Cleanup Instructions</label>
+        <textarea id="cfgExtra" placeholder="e.g. Use concise technical phrasing."></textarea>
+        <div class="row">
+          <label style="margin:0;display:flex;align-items:center;gap:6px;">
+            <input type="checkbox" id="cfgCleanup"> AI Cleanup
+          </label>
+          <label style="margin:0;display:flex;align-items:center;gap:6px;">
+            <input type="checkbox" id="cfgSounds"> Sounds
+          </label>
+          <label style="margin:0;display:flex;align-items:center;gap:6px;">
+            <input type="checkbox" id="cfgOverlay"> Recording Pill
+          </label>
+        </div>
+        <div class="row">
+          <button class="primary" onclick="saveConfig()">Save &amp; Apply</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Recent Dictations</h2>
+      <div id="historyList" style="color:var(--muted);font-size:13px;">No dictations recorded yet.</div>
+    </div>
+  </div>
+
+  <script>
+    let currentConfig = {};
+
+    async function refreshStatus() {
+      try {
+        const res = await fetch('/api/status', { cache: 'no-store' });
+        const s = await res.json();
+        const dot = document.getElementById('dot');
+        dot.className = 'dot ' + (!s.processAlive ? 'dead' : (s.ready ? 'ready' : ''));
+        document.getElementById('statusText').textContent = s.status || (s.processAlive ? 'Starting...' : 'Stopped');
+        document.getElementById('kvHotkey').textContent = s.hotkey || '-';
+        document.getElementById('kvDevice').textContent = (s.device || '-').toUpperCase();
+        document.getElementById('kvWhisper').textContent = s.whisperModel || '-';
+        document.getElementById('kvLlm').textContent = s.llmModel || '-';
+        document.getElementById('kvData').textContent = s.dataDir || '-';
+        document.getElementById('kvPid').textContent = s.yapPid || '-';
+      } catch (e) {
+        document.getElementById('statusText').textContent = 'Host unreachable';
+      }
+    }
+
+    async function loadConfig() {
+      const res = await fetch('/api/config', { cache: 'no-store' });
+      currentConfig = await res.json();
+      document.getElementById('cfgHotkey').value = currentConfig.hotkey || 'ctrl+win';
+      document.getElementById('cfgDict').value = (currentConfig.dictionary || []).join(', ');
+      document.getElementById('cfgExtra').value = currentConfig.cleanup_extra_instructions || '';
+      document.getElementById('cfgCleanup').checked = currentConfig.cleanup_enabled !== false;
+      document.getElementById('cfgSounds').checked = currentConfig.sounds !== false;
+      document.getElementById('cfgOverlay').checked = currentConfig.show_overlay !== false;
+    }
+
+    async function saveConfig() {
+      const next = Object.assign({}, currentConfig, {
+        hotkey: document.getElementById('cfgHotkey').value.trim() || 'ctrl+win',
+        dictionary: document.getElementById('cfgDict').value.split(',').map(x => x.trim()).filter(Boolean),
+        cleanup_extra_instructions: document.getElementById('cfgExtra').value,
+        cleanup_enabled: document.getElementById('cfgCleanup').checked,
+        sounds: document.getElementById('cfgSounds').checked,
+        show_overlay: document.getElementById('cfgOverlay').checked
+      });
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(next)
+      });
+      if (res.ok) {
+        currentConfig = next;
+        flashMsg('Saved & signaled reload.');
+      }
+    }
+
+    async function reloadYap() {
+      await fetch('/api/reload', { method: 'POST' });
+      flashMsg('Reload signaled.');
+    }
+
+    async function shutdownYap() {
+      if (!confirm('Stop Yap Portable?')) return;
+      await fetch('/__fleethacker/shutdown', {
+        method: 'POST',
+        headers: { 'X-FleetHacker-Shutdown': '1' }
+      });
+      document.getElementById('statusText').textContent = 'Stopped';
+      document.getElementById('dot').className = 'dot dead';
+    }
+
+    async function loadHistory() {
+      const res = await fetch('/api/history', { cache: 'no-store' });
+      const items = await res.json();
+      const box = document.getElementById('historyList');
+      if (!items.length) {
+        box.textContent = 'No dictations recorded yet.';
+        return;
+      }
+      box.innerHTML = '';
+      for (const item of items.slice().reverse().slice(0, 20)) {
+        const div = document.createElement('div');
+        div.className = 'hist-item';
+        const meta = document.createElement('div');
+        meta.className = 'hist-meta';
+        meta.textContent = `${item.time || ''} | ${item.cleanup || ''} | ${item.audio_seconds || 0}s audio | ${item.latency_ms || 0} ms`;
+        const body = document.createElement('div');
+        body.textContent = item.text || '';
+        div.appendChild(meta);
+        div.appendChild(body);
+        box.appendChild(div);
+      }
+    }
+
+    function flashMsg(text) {
+      const m = document.getElementById('msg');
+      m.textContent = text;
+      setTimeout(() => { m.textContent = ''; }, 3000);
+    }
+
+    loadConfig();
+    refreshStatus();
+    loadHistory();
+    setInterval(refreshStatus, 2500);
+    setInterval(loadHistory, 6000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+# Upstream clones and build outputs (downloadable/regenerable; zips live in GitHub Releases)
+sources/
+dist/
+temp-verify*/
+
+# Runtime state, logs, temp, and downloaded binaries/models
+byob-portable/bin/
+byob-portable/data/
+byob-portable/logs/
+byob-portable/temp/
+byob-portable/workspace/
+byob-portable/src/.pid
+
+yap-portable/runtime/
+yap-portable/data/
+yap-portable/logs/
+yap-portable/temp/
+yap-portable/models/
+yap-portable/engine/
+yap-portable/cuda/
+yap-portable/downloads/
+yap-portable/src/.pid
+
+__pycache__/
+*.pyc
+

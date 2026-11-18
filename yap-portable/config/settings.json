@@ -1,0 +1,6 @@
+{
+  "port": 8835,
+  "portRangeStart": 8835,
+  "portRangeEnd": 8837,
+  "openBrowserOnLaunch": true
+}
