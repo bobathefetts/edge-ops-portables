@@ -18,9 +18,28 @@ function Find-Uv {
     if ($cmd) { return $cmd.Source }
     $fallback = Join-Path $env:USERPROFILE '.local\bin\uv.exe'
     if (Test-Path $fallback) { return $fallback }
-    throw 'uv is required to build the portable Python runtime (https://docs.astral.sh/uv/).'
+
+    # Portable self-bootstrap: fetch uv.exe into temp\uv\ (zero install, no PATH edits).
+    $uvDir = Join-Path $root 'temp\uv'
+    $uvExe = Get-ChildItem -Path $uvDir -Filter 'uv.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+    if ($uvExe -and (Test-Path $uvExe)) { return $uvExe }
+
+    New-Item -ItemType Directory -Force $uvDir | Out-Null
+    $uvZip = Join-Path $uvDir 'uv.zip'
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    Write-Host 'uv not found; downloading portable uv.exe into temp\uv\ ...'
+    Invoke-WebRequest -Uri 'https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-pc-windows-msvc.zip' -OutFile $uvZip -UseBasicParsing
+    Expand-Archive -Path $uvZip -DestinationPath $uvDir -Force
+    Remove-Item $uvZip -Force -ErrorAction SilentlyContinue
+    $uvExe = Get-ChildItem -Path $uvDir -Filter 'uv.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+    if (-not $uvExe -or -not (Test-Path $uvExe)) {
+        throw 'Failed to extract portable uv.exe.'
+    }
+    return $uvExe
 }
 
+$env:UV_PYTHON_INSTALL_DIR = Join-Path $root 'temp\uv-python'
+$env:UV_CACHE_DIR = Join-Path $root 'temp\uv-cache'
 $uv = Find-Uv
 
 if ($Force -or -not (Test-Path $pyExe)) {

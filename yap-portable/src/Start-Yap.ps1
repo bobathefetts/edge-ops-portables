@@ -96,7 +96,15 @@ if ($CheckOnly) {
 
 $runnerExe = if (Test-Path $pythonw) { $pythonw } else { $pythonExe }
 if (-not (Test-Path $runnerExe)) {
-    throw "Missing '$runnerExe'. Run scripts\Build-Portable.ps1 first."
+    $buildScript = Join-Path $root 'scripts\Build-Portable.ps1'
+    if (Test-Path $buildScript) {
+        Add-Log 'sys' 'runtime\python missing; bootstrapping portable Python runtime via scripts\Build-Portable.ps1...'
+        & $buildScript
+        $runnerExe = if (Test-Path $pythonw) { $pythonw } else { $pythonExe }
+    }
+    if (-not (Test-Path $runnerExe)) {
+        throw "Missing '$runnerExe'. Download Yap-v0.2.1.zip from Releases or run scripts\Build-Portable.ps1."
+    }
 }
 
 function Invoke-LoopbackIdProbe([int]$ProbePort) {

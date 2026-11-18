@@ -114,7 +114,14 @@ if ($CheckOnly) {
 }
 
 if (-not (Test-Path $binExe)) {
-    throw "Missing '$binExe'. Run scripts\Build-Portable.ps1 (or BYOB-Dev.bat after building) to populate bin\."
+    $buildScript = Join-Path $root 'scripts\Build-Portable.ps1'
+    if (Test-Path $buildScript) {
+        Add-Log 'sys' 'bin\byob.exe missing; downloading portable BYOB release via scripts\Build-Portable.ps1...'
+        & $buildScript
+    }
+    if (-not (Test-Path $binExe)) {
+        throw "Missing '$binExe'. Download BYOB-v0.3.9.zip from Releases or run scripts\Build-Portable.ps1."
+    }
 }
 
 function Invoke-LoopbackIdProbe([int]$ProbePort) {
