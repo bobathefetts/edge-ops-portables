@@ -1,18 +1,20 @@
-# Pester 5 smoke tests for BYOB Portable (Windows PowerShell 5.1).
+# Pester 5 smoke tests for BYOB Edge-Ops Edition (Windows PowerShell 5.1).
 BeforeAll {
     $script:Root = Split-Path -Parent $PSScriptRoot
 }
 
-Describe 'BYOB Portable structure and PS 5.1 compatibility' {
-    It 'has required edge-ops root files' {
-        foreach ($f in @('VERSION', 'LICENSE', 'THIRD-PARTY-NOTICES.md', 'README.md', 'CHANGELOG.md', 'BYOB-Dev.bat', 'src\Start-BYOB.ps1', 'src\LoopbackPort.ps1', 'src\ProxyServer.cs', 'config\settings.json', 'plugins\outlook-classic\byob-plugin.json', 'plugins\outlook-classic\backend.ps1', 'plugins\outlook-classic\outlook_com.ps1')) {
+Describe 'BYOB Edge-Ops structure and PS 5.1 compatibility' {
+    It 'has required edge-ops root files and zero native EXEs/DLLs' {
+        foreach ($f in @('VERSION', 'LICENSE', 'THIRD-PARTY-NOTICES.md', 'README.md', 'CHANGELOG.md', 'BYOB-Dev.bat', 'src\Start-BYOB.ps1', 'src\LoopbackPort.ps1', 'src\ByobLlm.ps1', 'src\ByobTools.ps1', 'src\ui\index.html', 'config\settings.json', 'plugins\outlook-classic\outlook_com.ps1')) {
             Test-Path (Join-Path $script:Root $f) | Should -BeTrue
         }
+        $bins = @(Get-ChildItem -Path $script:Root -Include '*.exe','*.dll','*.pyd' -Recurse -ErrorAction SilentlyContinue)
+        $bins.Count | Should -Be 0
     }
 
     It 'all PowerShell scripts parse cleanly on Windows PowerShell 5.1' {
         $files = Get-ChildItem -Path $script:Root -Include '*.ps1', '*.psm1', '*.psd1' -Recurse |
-            Where-Object { $_.FullName -notmatch '\\temp\\|\\data\\|\\bin\\' }
+            Where-Object { $_.FullName -notmatch '\\temp\\|\\data\\' }
         foreach ($file in $files) {
             $tokens = $null
             $errors = $null
@@ -21,17 +23,7 @@ Describe 'BYOB Portable structure and PS 5.1 compatibility' {
         }
     }
 
-    It 'compiles ProxyServer.cs cleanly against .NET Framework' {
-        $cs = Join-Path $script:Root 'src\ProxyServer.cs'
-        { Add-Type -Path $cs } | Should -Not -Throw
-    }
-
-    It 'passes -CheckOnly when bin\byob.exe is present' {
-        $bin = Join-Path $script:Root 'bin\byob.exe'
-        if (-not (Test-Path $bin)) {
-            Set-ItResult -Skipped -Because 'bin\byob.exe not populated yet (run scripts\Build-Portable.ps1)'
-            return
-        }
+    It 'passes -CheckOnly' {
         $entry = Join-Path $script:Root 'src\Start-BYOB.ps1'
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $entry -CheckOnly
         $LASTEXITCODE | Should -Be 0

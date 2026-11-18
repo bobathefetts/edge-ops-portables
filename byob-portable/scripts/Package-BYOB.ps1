@@ -1,4 +1,4 @@
-# Package BYOB Portable into dist\BYOB-v<VERSION>.zip + .sha256 (edge-ops release layout). ASCII only.
+# Package BYOB into dist\BYOB-v<VERSION>.zip + .sha256 (edge-ops release layout). ASCII only.
 param(
     [string]$OutDir = ''
 )
@@ -6,13 +6,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $version = (Get-Content (Join-Path $root 'VERSION') -Raw).Trim()
-$binExe = Join-Path $root 'bin\byob.exe'
-if (-not (Test-Path $binExe)) {
-    throw "bin\byob.exe is missing. Run scripts\Build-Portable.ps1 first."
-}
 
-# Ensure BYOB.lnk exists and matches current root launcher bootstrap
-& (Join-Path $PSScriptRoot 'New-ToolShortcut.ps1') -Root $root -Name 'BYOB' -Script 'src\Start-BYOB.ps1' -Description 'BYOB Portable (Desktop Window + Outlook Classic)' | Out-Null
+& (Join-Path $PSScriptRoot 'Build-Portable.ps1')
 
 $distDir = if ($OutDir) { $OutDir } else { Join-Path $root 'dist' }
 New-Item -ItemType Directory -Force $distDir | Out-Null
@@ -37,9 +32,7 @@ $includeItems = @(
     'plugins',
     'src',
     'scripts',
-    'tests',
-    'bin',
-    'patches'
+    'tests'
 )
 
 foreach ($item in $includeItems) {
@@ -48,7 +41,6 @@ foreach ($item in $includeItems) {
         Copy-Item -Path $srcPath -Destination (Join-Path $stageDir $item) -Recurse -Force
     }
 }
-# Remove runtime artifacts if any crept in
 foreach ($clean in @('src\.pid', 'data', 'logs', 'temp')) {
     $p = Join-Path $stageDir $clean
     if (Test-Path $p) { Remove-Item $p -Recurse -Force }
@@ -66,5 +58,5 @@ $hash = (Get-FileHash -Path $zipOut -Algorithm SHA256).Hash.ToLowerInvariant()
 [IO.File]::WriteAllText($shaOut, "$hash  $pkgName.zip`r`n", [Text.Encoding]::ASCII)
 
 Remove-Item $stageParent -Recurse -Force
-Write-Host "Packaged: $zipOut ($('{0:N1}' -f ((Get-Item $zipOut).Length / 1MB)) MB)"
+Write-Host "Packaged: $zipOut ($('{0:N1}' -f ((Get-Item $zipOut).Length / 1KB)) KB)"
 Write-Host "SHA-256:  $hash"

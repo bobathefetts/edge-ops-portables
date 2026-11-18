@@ -9,8 +9,8 @@
       "name": "BYOB Portable",
       "category": "data-ai",
       "group": "local-ai",
-      "summary": "Local AI agent harness (Bring Your Own Brain) packaged in Edge-Ops portable format with self-contained state, headless .lnk launcher, and loopback proxy.",
-      "tagline": "Local AI agent coworker with workspace files, sheets, charts, and docs.",
+      "summary": "Local AI agent coworker with workspace files, Office XML reading, artifacts, undo, and Classic Outlook COM email assistant, built in pure PowerShell 5.1 + Edge --app UI (zero EXEs/DLLs).",
+      "tagline": "Local AI coworker + Classic Outlook email assistant in pure PowerShell 5.1.",
       "launcher": "BYOB.lnk",
       "defaultPort": 8830,
       "requirements": {
@@ -21,9 +21,9 @@
         "admin": false,
         "installs": false,
         "network": false,
-        "csharpRuntimeCompile": true,
+        "csharpRuntimeCompile": false,
         "gpu": false,
-        "outlook": false
+        "outlook": true
       },
       "status": "prototype",
       "external": true,
