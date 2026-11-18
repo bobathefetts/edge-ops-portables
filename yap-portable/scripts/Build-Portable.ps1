@@ -1,121 +1,50 @@
-# Build / populate the portable Yap runtime (Windows PowerShell 5.1). ASCII only.
-# Uses uv to stage a self-contained standalone Python 3.12 + pip packages inside runtime\python\,
-# optionally pre-downloads the llama.cpp Vulkan engine / models, and creates Yap.lnk.
+# Populate and verify local Whisper WASM assets for Yap (Windows PowerShell 5.1). ASCII only.
+# Zero Python, zero third-party EXEs/DLLs: downloads the 12 SHA-256-pinned WASM/ONNX files into src\ui\vendor\voice\ and builds Yap.lnk.
 param(
-    [switch]$Force,
-    [switch]$IncludeEngine,
-    [switch]$IncludeModels
+    [switch]$Force
 )
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$pyDir = Join-Path $root 'runtime\python'
-$pyExe = Join-Path $pyDir 'python.exe'
-$reqFile = Join-Path $root 'src\app\requirements-portable.txt'
+$voiceDir = Join-Path $root 'src\ui\vendor\voice'
+$manifestPath = Join-Path $root 'config\voice-assets.json'
+$manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
 
-function Find-Uv {
-    $cmd = Get-Command uv -ErrorAction SilentlyContinue
-    if ($cmd) { return $cmd.Source }
-    $fallback = Join-Path $env:USERPROFILE '.local\bin\uv.exe'
-    if (Test-Path $fallback) { return $fallback }
+$cdnBase = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/dist'
+$hfBase = 'https://huggingface.co/Xenova/whisper-tiny.en/resolve/79fb389fc764e7c395bd330e9531d9d32ada7049'
 
-    # Portable self-bootstrap: fetch uv.exe into temp\uv\ (zero install, no PATH edits).
-    $uvDir = Join-Path $root 'temp\uv'
-    $uvExe = Get-ChildItem -Path $uvDir -Filter 'uv.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
-    if ($uvExe -and (Test-Path $uvExe)) { return $uvExe }
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-    New-Item -ItemType Directory -Force $uvDir | Out-Null
-    $uvZip = Join-Path $uvDir 'uv.zip'
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Write-Host 'uv not found; downloading portable uv.exe into temp\uv\ ...'
-    Invoke-WebRequest -Uri 'https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-pc-windows-msvc.zip' -OutFile $uvZip -UseBasicParsing
-    Expand-Archive -Path $uvZip -DestinationPath $uvDir -Force
-    Remove-Item $uvZip -Force -ErrorAction SilentlyContinue
-    $uvExe = Get-ChildItem -Path $uvDir -Filter 'uv.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
-    if (-not $uvExe -or -not (Test-Path $uvExe)) {
-        throw 'Failed to extract portable uv.exe.'
+foreach ($entry in @($manifest.files)) {
+    $rel = [string]$entry.name
+    $expected = ([string]$entry.sha256).ToLowerInvariant()
+    $dest = Join-Path $voiceDir ($rel -replace '/', '\')
+    New-Item -ItemType Directory -Force (Split-Path $dest) | Out-Null
+
+    $needDownload = $Force -or -not (Test-Path -LiteralPath $dest)
+    if (-not $needDownload) {
+        $existingHash = (Get-FileHash -LiteralPath $dest -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($existingHash -ne $expected) { $needDownload = $true }
     }
-    return $uvExe
-}
 
-$env:UV_PYTHON_INSTALL_DIR = Join-Path $root 'temp\uv-python'
-$env:UV_CACHE_DIR = Join-Path $root 'temp\uv-cache'
-$uv = Find-Uv
-
-if ($Force -or -not (Test-Path $pyExe)) {
-    Write-Host 'Ensuring standalone Python 3.12 via uv...'
-    & $uv python install 3.12
-    if ($LASTEXITCODE -ne 0) { throw 'uv python install 3.12 failed.' }
-
-    $srcPyExe = (& $uv python find 3.12 --managed-python 2>$null | Select-Object -First 1)
-    if (-not $srcPyExe -or -not (Test-Path $srcPyExe)) {
-        $srcPyExe = (& $uv python find 3.12 | Select-Object -First 1)
-    }
-    if (-not $srcPyExe -or -not (Test-Path $srcPyExe)) {
-        throw 'Could not locate managed Python 3.12 installation.'
-    }
-    $srcPyDir = Split-Path -Parent $srcPyExe
-
-    if (Test-Path $pyDir) { Remove-Item $pyDir -Recurse -Force }
-    New-Item -ItemType Directory -Force $pyDir | Out-Null
-    Write-Host "Copying standalone Python from $srcPyDir -> $pyDir ..."
-    Copy-Item -Path (Join-Path $srcPyDir '*') -Destination $pyDir -Recurse -Force
-
-    # Allow uv pip install directly into our isolated portable Python copy.
-    $extMarker = Join-Path $pyDir 'Lib\EXTERNALLY-MANAGED'
-    if (Test-Path $extMarker) { Remove-Item $extMarker -Force }
-} else {
-    Write-Host 'runtime\python\python.exe already present (use -Force to rebuild).'
-}
-
-Write-Host 'Installing Yap dependencies into portable runtime\python\ ...'
-& $uv pip install --python $pyExe --system --no-cache -r $reqFile
-if ($LASTEXITCODE -ne 0) {
-    throw 'uv pip install failed.'
-}
-
-# Remove unneeded test/cache directories inside site-packages to keep zip lean.
-Get-ChildItem -Path $pyDir -Filter '__pycache__' -Directory -Recurse -ErrorAction SilentlyContinue |
-    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-$libTest = Join-Path $pyDir 'Lib\test'
-if (Test-Path $libTest) { Remove-Item $libTest -Recurse -Force -ErrorAction SilentlyContinue }
-
-# Ensure msvcp140.dll is bundled beside vcruntime140.dll for llama-server.exe on bare Windows systems.
-$msvcpTarget = Join-Path $pyDir 'msvcp140.dll'
-if (-not (Test-Path $msvcpTarget)) {
-    $sysMsvcp = Join-Path $env:SystemRoot 'System32\msvcp140.dll'
-    if (Test-Path $sysMsvcp) {
-        Copy-Item -Path $sysMsvcp -Destination $msvcpTarget -Force
-    } else {
-        $wheelMsvcp = Get-ChildItem -Path $pyDir -Filter 'msvcp140*.dll' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($wheelMsvcp) {
-            Copy-Item -Path $wheelMsvcp.FullName -Destination $msvcpTarget -Force
+    if ($needDownload) {
+        $url = if ($rel.StartsWith('models/whisper-tiny.en/')) {
+            "$hfBase/" + $rel.Substring('models/whisper-tiny.en/'.Length)
+        } else {
+            "$cdnBase/$rel"
         }
+        Write-Host "Downloading $rel ..."
+        Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing
+    }
+
+    $actual = (Get-FileHash -LiteralPath $dest -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($actual -ne $expected) {
+        Remove-Item $dest -Force -ErrorAction SilentlyContinue
+        throw "SHA-256 mismatch for ${rel}: expected $expected, got $actual"
     }
 }
 
-if ($IncludeEngine) {
-    Write-Host 'Pre-downloading Vulkan llama.cpp engine into engine\ ...'
-    $env:YAP_PORTABLE = '1'
-    $env:YAP_ASSETS = $root
-    $env:YAP_HOME = Join-Path $root 'data'
-    $appDir = Join-Path $root 'src\app'
-    & $pyExe -c "import sys; sys.path.insert(0, r'$appDir'); from yap import assets; p = assets.ensure_engine('vulkan'); print('Engine:', p)"
-    if ($LASTEXITCODE -ne 0) { throw 'Failed to download Vulkan engine.' }
-}
-
-if ($IncludeModels) {
-    Write-Host 'Pre-downloading default speech (small.en) and cleanup (qwen3.5-2b) models into models\ ...'
-    $env:YAP_PORTABLE = '1'
-    $env:YAP_ASSETS = $root
-    $env:YAP_HOME = Join-Path $root 'data'
-    $appDir = Join-Path $root 'src\app'
-    & $pyExe -c "import sys; sys.path.insert(0, r'$appDir'); from yap import assets; print(assets.ensure_whisper('small.en')); print(assets.ensure_llm('qwen3.5-2b'))"
-    if ($LASTEXITCODE -ne 0) { throw 'Failed to download models.' }
-}
-
-# Create Edge-Ops headless .lnk launcher using Yap's own icon.
 $lnkScript = Join-Path $PSScriptRoot 'New-ToolShortcut.ps1'
-& $lnkScript -Root $root -Name 'Yap' -Script 'src\Start-Yap.ps1' -Icon 'assets\yap.ico,0' -Description 'Yap Portable (Push-to-Talk Dictation)'
+& $lnkScript -Root $root -Name 'Yap' -Script 'src\Start-Yap.ps1' -Icon 'assets\yap.ico,0' -Description 'Yap (Edge-Ops Pure PowerShell + Whisper WASM)'
 
-Write-Host 'Build-Portable complete.'
+Write-Host 'Build-Portable complete (zero Python, all 12 Whisper WASM assets verified).'

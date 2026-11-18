@@ -1,18 +1,14 @@
-# Package Yap Portable into dist\Yap-v<VERSION>.zip + .sha256 (edge-ops release layout). ASCII only.
+# Package Yap into dist\Yap-v<VERSION>.zip + .sha256 (edge-ops release layout). ASCII only.
 param(
-    [string]$OutDir = '',
-    [switch]$IncludeDownloadedAssets
+    [string]$OutDir = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $version = (Get-Content (Join-Path $root 'VERSION') -Raw).Trim()
-$pyExe = Join-Path $root 'runtime\python\python.exe'
-if (-not (Test-Path $pyExe)) {
-    throw "runtime\python\python.exe is missing. Run scripts\Build-Portable.ps1 first."
-}
 
-& (Join-Path $PSScriptRoot 'New-ToolShortcut.ps1') -Root $root -Name 'Yap' -Script 'src\Start-Yap.ps1' -Icon 'assets\yap.ico,0' -Description 'Yap Portable (Push-to-Talk Dictation)' | Out-Null
+# Ensure Whisper WASM assets and Yap.lnk are present and verified
+& (Join-Path $PSScriptRoot 'Build-Portable.ps1')
 
 $distDir = if ($OutDir) { $OutDir } else { Join-Path $root 'dist' }
 New-Item -ItemType Directory -Force $distDir | Out-Null
@@ -37,12 +33,8 @@ $includeItems = @(
     'config',
     'src',
     'scripts',
-    'tests',
-    'runtime'
+    'tests'
 )
-if ($IncludeDownloadedAssets) {
-    $includeItems += @('engine', 'models', 'cuda')
-}
 
 foreach ($item in $includeItems) {
     $srcPath = Join-Path $root $item

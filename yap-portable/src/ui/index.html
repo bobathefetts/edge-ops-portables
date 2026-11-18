@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Yap Portable - Edge-Ops</title>
+  <title>Yap - Local Push-to-Talk Dictation (Edge-Ops)</title>
   <style>
     :root {
       --bg: #0c1118;
@@ -24,12 +24,12 @@
       color: var(--text);
       line-height: 1.45;
     }
-    .wrap { max-width: 960px; margin: 0 auto; padding: 24px 18px 40px; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 22px 18px 40px; }
     header {
       display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
-      border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 20px;
+      border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 18px;
     }
-    h1 { margin: 0; font-size: 22px; letter-spacing: 0.02em; }
+    h1 { margin: 0; font-size: 21px; letter-spacing: 0.02em; }
     .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
     .pill {
       display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px;
@@ -38,88 +38,90 @@
     .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--warn); }
     .dot.ready { background: var(--ok); }
     .dot.dead { background: var(--bad); }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 18px; }
-    .card {
-      background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px;
-    }
-    .card h2 { margin: 0 0 10px; font-size: 15px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; }
-    .kv { display: grid; grid-template-columns: 120px 1fr; gap: 6px 10px; font-size: 13px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 18px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .card h2 { margin: 0 0 10px; font-size: 14px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; }
+    .kv { display: grid; grid-template-columns: 130px 1fr; gap: 6px 10px; font-size: 13px; }
     .k { color: var(--muted); }
     label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
     input[type=text], select, textarea {
       width: 100%; background: #0b1017; color: var(--text); border: 1px solid var(--border);
       border-radius: 6px; padding: 8px 10px; font-family: inherit; font-size: 13px;
     }
-    textarea { min-height: 64px; resize: vertical; }
+    textarea { min-height: 58px; resize: vertical; }
     .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
     button {
       background: #1d2a3a; color: var(--text); border: 1px solid var(--border);
-      border-radius: 6px; padding: 8px 14px; font-size: 13px; cursor: pointer;
+      border-radius: 6px; padding: 8px 14px; font-size: 13px; cursor: pointer; user-select: none;
     }
     button.primary { background: #0ea5e9; border-color: #0ea5e9; color: #05131f; font-weight: 600; }
+    button.talk { background: #1e293b; border-color: #38bdf8; color: #e0f2fe; font-weight: 600; padding: 10px 16px; }
+    button.talk.active { background: #7f1d1d; border-color: #f87171; color: #fee2e2; }
     button.danger { background: #451a1a; border-color: #7f1d1d; color: #fecaca; }
     button:hover { filter: brightness(1.1); }
-    .hist-item {
-      border-top: 1px solid var(--border); padding: 10px 0; font-size: 13px;
-    }
+    .hist-item { border-top: 1px solid var(--border); padding: 10px 0; font-size: 13px; }
     .hist-item:first-child { border-top: none; padding-top: 0; }
     .hist-meta { color: var(--muted); font-size: 11px; margin-bottom: 3px; }
     code { background: #0b1017; padding: 2px 5px; border-radius: 4px; font-size: 12px; }
-    #msg { font-size: 12px; color: var(--ok); margin-left: 6px; }
+    #msg { font-size: 12px; color: var(--ok); }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
       <div>
-        <h1>Yap Portable <span style="color:var(--muted);font-weight:400;font-size:14px;">Edge-Ops Host</span></h1>
-        <div class="sub">Zero-install push-to-talk dictation &mdash; all models, settings, logs, and history stay inside this folder.</div>
+        <h1>Yap <span style="color:var(--muted);font-weight:400;font-size:14px;">Edge-Ops Pure PowerShell + Whisper WASM</span></h1>
+        <div class="sub">Zero Python, zero external EXEs. Keep this window open (or minimized) for local Whisper WASM transcription.</div>
       </div>
       <div class="pill">
         <span class="dot" id="dot"></span>
-        <span id="statusText">Loading...</span>
+        <span id="statusText">Loading Whisper WASM...</span>
       </div>
     </header>
 
     <div class="grid">
       <div class="card">
-        <h2>Runtime</h2>
+        <h2>Runtime &amp; Dictation</h2>
         <div class="kv">
-          <div class="k">Hotkey</div><div id="kvHotkey">-</div>
-          <div class="k">Device</div><div id="kvDevice">-</div>
-          <div class="k">Speech model</div><div id="kvWhisper">-</div>
-          <div class="k">Cleanup model</div><div id="kvLlm">-</div>
-          <div class="k">Data folder</div><div><code id="kvData">-</code></div>
-          <div class="k">Yap PID</div><div id="kvPid">-</div>
+          <div class="k">Global Hotkey</div><div id="kvHotkey">-</div>
+          <div class="k">Native Hook</div><div id="kvNative">-</div>
+          <div class="k">Whisper WASM</div><div id="kvWasm">Loading...</div>
+          <div class="k">Data Folder</div><div><code id="kvData">-</code></div>
         </div>
         <div class="row">
-          <button onclick="reloadYap()">Reload Settings</button>
+          <button class="talk" id="holdTalkBtn">Hold to Dictate (Browser Mic)</button>
+          <button onclick="copyLast()">Copy Last</button>
           <button class="danger" onclick="shutdownYap()">Stop Yap</button>
-          <span id="msg"></span>
         </div>
+        <div class="row"><span id="msg"></span></div>
       </div>
 
       <div class="card">
-        <h2>Quick Settings</h2>
-        <label for="cfgHotkey">Push-to-talk Hotkey (restart Yap after changing)</label>
+        <h2>Settings</h2>
+        <label for="cfgHotkey">Push-to-talk Hotkey (e.g. ctrl+win, ctrl+alt, f9)</label>
         <input type="text" id="cfgHotkey" placeholder="ctrl+win">
-        <label for="cfgDict">Custom Dictionary (comma-separated spellings)</label>
-        <input type="text" id="cfgDict" placeholder="Ollama, Whisper">
-        <label for="cfgExtra">Extra Cleanup Instructions</label>
-        <textarea id="cfgExtra" placeholder="e.g. Use concise technical phrasing."></textarea>
+        <label for="cfgMic">Microphone Device</label>
+        <select id="cfgMic"><option value="">Windows default</option></select>
+        <label for="cfgBackend">AI Cleanup Backend</label>
+        <select id="cfgBackend">
+          <option value="basic">Rule-based only (offline, instant)</option>
+          <option value="openai">Local OpenAI /v1 (Fairlead 8776 / Phoenix LAI 1234)</option>
+          <option value="ollama">Local Ollama (11434)</option>
+        </select>
+        <label for="cfgEndpoint">Local AI Endpoint URL (optional, loopback only)</label>
+        <input type="text" id="cfgEndpoint" placeholder="http://127.0.0.1:8776/v1">
+        <label for="cfgModel">Local AI Model Name (when using openai/ollama)</label>
+        <input type="text" id="cfgModel" placeholder="qwen3.5:2b">
+        <label for="cfgDict">Custom Dictionary (comma-separated)</label>
+        <input type="text" id="cfgDict" placeholder="Whisper, Edge-Ops">
         <div class="row">
-          <label style="margin:0;display:flex;align-items:center;gap:6px;">
-            <input type="checkbox" id="cfgCleanup"> AI Cleanup
-          </label>
-          <label style="margin:0;display:flex;align-items:center;gap:6px;">
-            <input type="checkbox" id="cfgSounds"> Sounds
-          </label>
-          <label style="margin:0;display:flex;align-items:center;gap:6px;">
-            <input type="checkbox" id="cfgOverlay"> Recording Pill
-          </label>
+          <label style="margin:0;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="cfgCleanup"> Cleanup</label>
+          <label style="margin:0;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="cfgSounds"> Sounds</label>
+          <label style="margin:0;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="cfgOverlay"> Pill Overlay</label>
+          <label style="margin:0;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="cfgRestore"> Restore Clipboard</label>
         </div>
         <div class="row">
-          <button class="primary" onclick="saveConfig()">Save &amp; Apply</button>
+          <button class="primary" onclick="saveConfig()">Save Settings</button>
         </div>
       </div>
     </div>
@@ -132,44 +134,242 @@
 
   <script>
     let currentConfig = {};
+    let worker = null;
+    let wasmReady = false;
+    let wasmError = '';
+    let nextReqId = 1;
+    let pendingWorkers = {};
+    let lastText = '';
+
+    function initWorker() {
+      worker = new Worker('/voice-worker.js', { type: 'module' });
+      worker.onmessage = (e) => {
+        const m = e.data || {};
+        if (m.type === 'ready') {
+          wasmReady = true;
+          document.getElementById('kvWasm').textContent = 'Ready (whisper-tiny.en q8)';
+          document.getElementById('dot').className = 'dot ready';
+          document.getElementById('statusText').textContent = 'Ready';
+        } else if (m.type === 'text' && pendingWorkers[m.id]) {
+          pendingWorkers[m.id].resolve(m.text || '');
+          delete pendingWorkers[m.id];
+        } else if (m.type === 'error') {
+          const err = new Error(m.message || 'Whisper WASM error');
+          if (m.id && pendingWorkers[m.id]) {
+            pendingWorkers[m.id].reject(err);
+            delete pendingWorkers[m.id];
+          } else {
+            wasmError = err.message;
+            document.getElementById('kvWasm').textContent = 'Error: ' + wasmError;
+          }
+        }
+      };
+      worker.onerror = () => {
+        wasmError = 'Worker failed to start';
+        document.getElementById('kvWasm').textContent = wasmError;
+      };
+      worker.postMessage({ type: 'load' });
+    }
+
+    function transcribeFloat32(float32Audio) {
+      return new Promise((resolve, reject) => {
+        if (!wasmReady) return reject(new Error('Whisper WASM not ready'));
+        const id = nextReqId++;
+        pendingWorkers[id] = { resolve, reject };
+        worker.postMessage({ type: 'transcribe', id, audio: float32Audio }, [float32Audio.buffer]);
+      });
+    }
+
+    function base64Pcm16ToFloat32(b64) {
+      const bin = atob(b64);
+      const len = Math.floor(bin.length / 2);
+      const out = new Float32Array(len);
+      for (let i = 0; i < len; i++) {
+        const lo = bin.charCodeAt(i * 2);
+        const hi = bin.charCodeAt(i * 2 + 1);
+        let s = (hi << 8) | lo;
+        if (s >= 0x8000) s -= 0x10000;
+        out[i] = s / 32768.0;
+      }
+      return out;
+    }
+
+    let jobBusy = false;
+    async function pollJobs() {
+      if (!jobBusy) {
+        jobBusy = true;
+        try {
+          const res = await fetch('/api/job/next?ready=' + (wasmReady ? '1' : '0'), { cache: 'no-store' });
+          if (res.status === 200) {
+            const job = await res.json();
+            if (job && job.id && job.pcmBase64 && wasmReady) {
+              try {
+                const audio = base64Pcm16ToFloat32(job.pcmBase64);
+                const text = await transcribeFloat32(audio);
+                await fetch('/api/job/complete', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ id: job.id, text, engine: 'whisper-wasm' })
+                });
+                loadHistory();
+              } catch (err) {
+                await fetch('/api/job/complete', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ id: job.id, error: String(err.message || err) })
+                });
+              }
+            }
+          }
+        } catch (e) {
+          // ignore transient poll error
+        } finally {
+          jobBusy = false;
+        }
+      }
+      setTimeout(pollJobs, 150);
+    }
+
+    // Browser AudioWorklet Hold-to-Talk fallback (works even if C# Add-Type hook is blocked)
+    let bStream = null, bCtx = null, bNode = null, bChunks = [], bTalking = false;
+    function downsample(input, inRate, outRate) {
+      if (inRate === outRate) return Float32Array.from(input);
+      const ratio = inRate / outRate;
+      const len = Math.floor(input.length / ratio);
+      const out = new Float32Array(len);
+      for (let i = 0; i < len; i++) {
+        const a = Math.floor(i * ratio), b = Math.min(input.length, Math.floor((i + 1) * ratio));
+        let sum = 0;
+        for (let j = a; j < b; j++) sum += input[j];
+        out[i] = b > a ? sum / (b - a) : 0;
+      }
+      return out;
+    }
+
+    async function startBrowserTalk() {
+      if (bTalking) return;
+      bTalking = true;
+      bChunks = [];
+      const btn = document.getElementById('holdTalkBtn');
+      btn.classList.add('active');
+      btn.textContent = 'Listening... Release to Transcribe';
+      try {
+        bStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+        bCtx = new AudioContext();
+        await bCtx.audioWorklet.addModule('/voice-worklet.js');
+        const src = bCtx.createMediaStreamSource(bStream);
+        bNode = new AudioWorkletNode(bCtx, 'packetrat-capture');
+        bNode.port.onmessage = (e) => {
+          if (bTalking) bChunks.push(downsample(e.data, bCtx.sampleRate, 16000));
+        };
+        src.connect(bNode);
+      } catch (e) {
+        bTalking = false;
+        btn.classList.remove('active');
+        btn.textContent = 'Hold to Dictate (Browser Mic)';
+        flashMsg('Mic error: ' + e.message);
+      }
+    }
+
+    async function stopBrowserTalk() {
+      if (!bTalking) return;
+      bTalking = false;
+      const btn = document.getElementById('holdTalkBtn');
+      btn.classList.remove('active');
+      btn.textContent = 'Hold to Dictate (Browser Mic)';
+      if (bStream) bStream.getTracks().forEach(t => t.stop());
+      if (bCtx) bCtx.close();
+      bStream = null; bCtx = null; bNode = null;
+
+      const total = bChunks.reduce((n, c) => n + c.length, 0);
+      if (total < 4800) { flashMsg('Held too briefly.'); return; }
+      const audio = new Float32Array(total);
+      let off = 0;
+      for (const c of bChunks) { audio.set(c, off); off += c.length; }
+      bChunks = [];
+      try {
+        flashMsg('Transcribing...');
+        const raw = await transcribeFloat32(audio);
+        if (!raw) { flashMsg('No speech heard.'); return; }
+        const res = await fetch('/api/dictate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: raw, paste: false })
+        });
+        const data = await res.json();
+        lastText = data.text || raw;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          try { await navigator.clipboard.writeText(lastText); } catch {}
+        }
+        flashMsg('Cleaned & copied: ' + lastText.slice(0, 50));
+        loadHistory();
+      } catch (e) {
+        flashMsg('Transcribe error: ' + e.message);
+      }
+    }
+
+    const talkBtn = document.getElementById('holdTalkBtn');
+    talkBtn.addEventListener('mousedown', startBrowserTalk);
+    talkBtn.addEventListener('mouseup', stopBrowserTalk);
+    talkBtn.addEventListener('mouseleave', stopBrowserTalk);
+    talkBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startBrowserTalk(); });
+    talkBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopBrowserTalk(); });
 
     async function refreshStatus() {
       try {
         const res = await fetch('/api/status', { cache: 'no-store' });
         const s = await res.json();
-        const dot = document.getElementById('dot');
-        dot.className = 'dot ' + (!s.processAlive ? 'dead' : (s.ready ? 'ready' : ''));
-        document.getElementById('statusText').textContent = s.status || (s.processAlive ? 'Starting...' : 'Stopped');
         document.getElementById('kvHotkey').textContent = s.hotkey || '-';
-        document.getElementById('kvDevice').textContent = (s.device || '-').toUpperCase();
-        document.getElementById('kvWhisper').textContent = s.whisperModel || '-';
-        document.getElementById('kvLlm').textContent = s.llmModel || '-';
+        document.getElementById('kvNative').textContent = s.nativeHook ? 'Active (Win32 Hook + WinMM + SendInput)' : 'Browser fallback (Add-Type blocked)';
         document.getElementById('kvData').textContent = s.dataDir || '-';
-        document.getElementById('kvPid').textContent = s.yapPid || '-';
+        if (wasmReady) {
+          document.getElementById('dot').className = 'dot ready';
+          document.getElementById('statusText').textContent = s.status || 'Ready';
+        }
       } catch (e) {
-        document.getElementById('statusText').textContent = 'Host unreachable';
+        document.getElementById('dot').className = 'dot dead';
+        document.getElementById('statusText').textContent = 'Host stopped';
       }
     }
 
     async function loadConfig() {
-      const res = await fetch('/api/config', { cache: 'no-store' });
-      currentConfig = await res.json();
+      const [cfgRes, micRes] = await Promise.all([
+        fetch('/api/config', { cache: 'no-store' }),
+        fetch('/api/devices', { cache: 'no-store' })
+      ]);
+      currentConfig = await cfgRes.json();
+      const devs = await micRes.json();
+      const sel = document.getElementById('cfgMic');
+      sel.innerHTML = '<option value="">Windows default</option>';
+      for (const d of (devs.devices || [])) {
+        const opt = document.createElement('option');
+        opt.value = d; opt.textContent = d;
+        sel.appendChild(opt);
+      }
       document.getElementById('cfgHotkey').value = currentConfig.hotkey || 'ctrl+win';
+      sel.value = currentConfig.input_device || '';
+      document.getElementById('cfgBackend').value = currentConfig.cleanup_backend || 'basic';
+      document.getElementById('cfgEndpoint').value = currentConfig.llm_endpoint || 'http://127.0.0.1:8776/v1';
+      document.getElementById('cfgModel').value = currentConfig.llm_model || 'qwen3.5:2b';
       document.getElementById('cfgDict').value = (currentConfig.dictionary || []).join(', ');
-      document.getElementById('cfgExtra').value = currentConfig.cleanup_extra_instructions || '';
       document.getElementById('cfgCleanup').checked = currentConfig.cleanup_enabled !== false;
       document.getElementById('cfgSounds').checked = currentConfig.sounds !== false;
       document.getElementById('cfgOverlay').checked = currentConfig.show_overlay !== false;
+      document.getElementById('cfgRestore').checked = currentConfig.restore_clipboard !== false;
     }
 
     async function saveConfig() {
       const next = Object.assign({}, currentConfig, {
         hotkey: document.getElementById('cfgHotkey').value.trim() || 'ctrl+win',
+        input_device: document.getElementById('cfgMic').value || null,
+        cleanup_backend: document.getElementById('cfgBackend').value,
+        llm_endpoint: document.getElementById('cfgEndpoint').value.trim(),
+        llm_model: document.getElementById('cfgModel').value.trim(),
         dictionary: document.getElementById('cfgDict').value.split(',').map(x => x.trim()).filter(Boolean),
-        cleanup_extra_instructions: document.getElementById('cfgExtra').value,
         cleanup_enabled: document.getElementById('cfgCleanup').checked,
         sounds: document.getElementById('cfgSounds').checked,
-        show_overlay: document.getElementById('cfgOverlay').checked
+        show_overlay: document.getElementById('cfgOverlay').checked,
+        restore_clipboard: document.getElementById('cfgRestore').checked
       });
       const res = await fetch('/api/config', {
         method: 'POST',
@@ -178,40 +378,32 @@
       });
       if (res.ok) {
         currentConfig = next;
-        flashMsg('Saved & signaled reload.');
+        flashMsg('Settings saved.');
+        refreshStatus();
       }
     }
 
-    async function reloadYap() {
-      await fetch('/api/reload', { method: 'POST' });
-      flashMsg('Reload signaled.');
-    }
-
-    async function shutdownYap() {
-      if (!confirm('Stop Yap Portable?')) return;
-      await fetch('/__fleethacker/shutdown', {
-        method: 'POST',
-        headers: { 'X-FleetHacker-Shutdown': '1' }
-      });
-      document.getElementById('statusText').textContent = 'Stopped';
-      document.getElementById('dot').className = 'dot dead';
+    async function copyLast() {
+      if (!lastText) return flashMsg('No dictation yet.');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(lastText);
+        flashMsg('Copied to clipboard.');
+      }
     }
 
     async function loadHistory() {
       const res = await fetch('/api/history', { cache: 'no-store' });
       const items = await res.json();
       const box = document.getElementById('historyList');
-      if (!items.length) {
-        box.textContent = 'No dictations recorded yet.';
-        return;
-      }
+      if (!items.length) { box.textContent = 'No dictations recorded yet.'; return; }
+      lastText = items[items.length - 1].text || '';
       box.innerHTML = '';
       for (const item of items.slice().reverse().slice(0, 20)) {
         const div = document.createElement('div');
         div.className = 'hist-item';
         const meta = document.createElement('div');
         meta.className = 'hist-meta';
-        meta.textContent = `${item.time || ''} | ${item.cleanup || ''} | ${item.audio_seconds || 0}s audio | ${item.latency_ms || 0} ms`;
+        meta.textContent = `${item.time || ''} | ${item.stt || 'whisper-wasm'} | ${item.cleanup || ''} | ${item.latency_ms || 0} ms`;
         const body = document.createElement('div');
         body.textContent = item.text || '';
         div.appendChild(meta);
@@ -220,15 +412,24 @@
       }
     }
 
-    function flashMsg(text) {
-      const m = document.getElementById('msg');
-      m.textContent = text;
-      setTimeout(() => { m.textContent = ''; }, 3000);
+    async function shutdownYap() {
+      if (!confirm('Stop Yap?')) return;
+      await fetch('/__fleethacker/shutdown', { method: 'POST', headers: { 'X-FleetHacker-Shutdown': '1' } });
+      document.getElementById('dot').className = 'dot dead';
+      document.getElementById('statusText').textContent = 'Stopped';
     }
 
+    function flashMsg(t) {
+      const el = document.getElementById('msg');
+      el.textContent = t;
+      setTimeout(() => { el.textContent = ''; }, 3500);
+    }
+
+    initWorker();
     loadConfig();
     refreshStatus();
     loadHistory();
+    pollJobs();
     setInterval(refreshStatus, 2500);
     setInterval(loadHistory, 6000);
   </script>

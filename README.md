@@ -1,19 +1,23 @@
 # Edge-Ops Portables (`BYOB` + `Yap`)
 
-Zero-install, self-contained Windows packages converted to follow the [FleetHacker Edge-Ops](https://github.com/fleethacker-data-crucible/edge-ops) layout and conventions.
+Zero-install Windows packages converted to follow the [FleetHacker Edge-Ops](https://github.com/fleethacker-data-crucible/edge-ops) conventions.
 
-## Option 1: Download Pre-Built Zip Packages (GitHub Releases)
-Pre-built `.zip` archives are attached to **Releases** (not stored inside the Git folder tree because `Yap-v0.2.1.zip` exceeds GitHub's 100 MB Git file limit):
-
-- **Release page:** https://github.com/bobathefetts/edge-ops-portables/releases/tag/v1.0.0
+## Download Pre-Built Zip Packages (GitHub Releases)
+- **Latest Release:** https://github.com/bobathefetts/edge-ops-portables/releases/latest
+  - `Yap-v0.3.0.zip` (`29.4 MB`) — **Pure Windows PowerShell 5.1 + C# (`Add-Type`) + local Edge Whisper WASM** (`whisper-tiny.en` ONNX pre-bundled offline, `0` `.exe`/`.dll`/`.pyd` files, zero Python).
   - `BYOB-v0.3.9.zip` (`69.1 MB`) — Native BYOB desktop window (`--serve`), loopback Edge-Ops host (`8830-8832`), and **Outlook Classic** COM plugin (`plugins\outlook-classic\`, adapted from `PacketRat`).
-  - `Yap-v0.2.1.zip` (`112.7 MB`) — Bundled Python 3.12 runtime, portable `.\data\` state, and local Edge-Ops dashboard (`8835-8837`).
 
-Verify `.sha256`, right-click the `.zip` -> **Properties -> Unblock**, extract the whole folder, and double-click `BYOB.lnk` or `Yap.lnk`.
+Verify `.sha256`, right-click each `.zip` -> **Properties -> Unblock**, extract the whole folder, and double-click `Yap.lnk` or `BYOB.lnk`.
 
-## Option 2: Run Directly From This Source Repo (Self-Bootstrapping)
-Even if you clone this repo or use **Code -> Download ZIP**, you do **not** need `uv`, Python, or Rust installed:
-- Running `BYOB.lnk` / `BYOB-Dev.bat` automatically runs `byob-portable\scripts\Build-Portable.ps1` if `bin\byob.exe` is missing.
-- Running `Yap.lnk` / `Yap-Dev.bat` automatically runs `yap-portable\scripts\Build-Portable.ps1` if `runtime\python\python.exe` is missing (fetching standalone `uv.exe` into `temp\uv\` only if `uv` is not already installed).
+## Building From Source
+```powershell
+# Yap (PowerShell 5.1 + C# + Whisper WASM; zero Python)
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\yap-portable\scripts\Build-Portable.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\yap-portable\scripts\Package-Yap.ps1
 
-See [byob-portable/README.md](byob-portable/README.md) and [yap-portable/README.md](yap-portable/README.md) for full details.
+# BYOB Portable (downloads BYOB Windows release binary + packages Outlook Classic plugin)
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\byob-portable\scripts\Build-Portable.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\byob-portable\scripts\Package-BYOB.ps1
+```
+
+See [yap-portable/README.md](yap-portable/README.md) and [byob-portable/README.md](byob-portable/README.md) for full details.

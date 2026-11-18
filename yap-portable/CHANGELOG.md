@@ -1,7 +1,9 @@
 # Changelog
 
+## 0.3.0 (2026-11-18)
+- **Full Python-free, zero-EXE Edge-Ops rewrite:** removed Python runtime, `faster-whisper`, and `llama-server.exe` so Yap runs strictly on Windows PowerShell 5.1 + .NET Framework 4.x (`src\YapNative.cs`) + Edge/Chrome Whisper WASM (`src\ui\vendor\voice\`, pinned by SHA-256 in `config\voice-assets.json`).
+- Implemented Win32 `WH_KEYBOARD_LL` push-to-talk hook (`Ctrl+Win`), WinMM `winmm.dll` 16 kHz mic capture, topmost WinForms pill overlay, and `SendInput` clipboard paste in C# 5 (`src\YapNative.cs`), with graceful pure-Edge `AudioWorklet` + `System.Speech` fallback if `Add-Type` is blocked.
+- Ported rule-based cleanup, spoken formatting, and word-lock guard into `src\YapCleanup.ps1`, plus optional local OpenAI/Ollama endpoint support.
+
 ## 0.2.1-edgeops.1 (2026-11-18)
-- Initial portable Edge-Ops conversion of `bobathefetts/yap` v0.2.1.
-- Replaced Inno Setup installer and `%USERPROFILE%\.yap` / Start Menu / HKCU registry writes with a self-contained folder (`data\`, `models\`, `engine\`, `cuda\`, `logs\`, `temp\`).
-- Bundled relocatable standalone Python runtime under `runtime\python\`.
-- Added Windows PowerShell 5.1 host (`src\Start-Yap.ps1`) with loopback control/status UI (`src\ui\index.html`) on port block `8835-8837`, `/__fleethacker/id`, `/__fleethacker/shutdown`, `-CheckOnly`, headless `Yap.lnk`, Pester tests, and zip + SHA-256 packager.
+- Initial portable wrapper around Python Yap.

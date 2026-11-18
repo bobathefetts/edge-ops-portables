@@ -33,6 +33,10 @@ function Add-Log([string]$level, [string]$text) {
 
 function Show-Fatal([string]$text) {
     Add-Log 'FATAL' $text
+    if ($CheckOnly -or -not [Environment]::UserInteractive) {
+        [Console]::Error.WriteLine("FATAL: $text")
+        return
+    }
     try {
         Add-Type -AssemblyName System.Windows.Forms
         [void][System.Windows.Forms.MessageBox]::Show("BYOB Portable could not start.`n`n$text`n`nLog: $logFile", 'BYOB Portable')

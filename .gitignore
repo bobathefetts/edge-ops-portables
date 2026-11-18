@@ -11,15 +11,11 @@ byob-portable/temp/
 byob-portable/workspace/
 byob-portable/src/.pid
 
-yap-portable/runtime/
 yap-portable/data/
 yap-portable/logs/
 yap-portable/temp/
-yap-portable/models/
-yap-portable/engine/
-yap-portable/cuda/
-yap-portable/downloads/
 yap-portable/src/.pid
+yap-portable/src/ui/vendor/voice/
 
 __pycache__/
 *.pyc

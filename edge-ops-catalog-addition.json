@@ -35,8 +35,8 @@
       "name": "Yap Portable",
       "category": "ps-host-browser-ui",
       "group": "voice-learning",
-      "summary": "Private push-to-talk Windows dictation (Whisper + llama.cpp cleanup) converted to a zero-install Edge-Ops folder with a local status/settings UI.",
-      "tagline": "Hold Ctrl+Win, speak, and paste cleaned dictation locally.",
+      "summary": "Private push-to-talk Windows dictation built in Windows PowerShell 5.1, C# (Add-Type), and local Edge Whisper WASM (zero Python, zero external EXEs).",
+      "tagline": "Hold Ctrl+Win, speak, and paste cleaned dictation locally with zero Python.",
       "launcher": "Yap.lnk",
       "defaultPort": 8835,
       "requirements": {
@@ -47,7 +47,7 @@
         "admin": false,
         "installs": false,
         "network": false,
-        "csharpRuntimeCompile": false,
+        "csharpRuntimeCompile": true,
         "gpu": false,
         "outlook": false
       },
