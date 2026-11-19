@@ -1,0 +1,7 @@
+{
+  "port": 8833,
+  "portRangeStart": 8833,
+  "portRangeEnd": 8835,
+  "mode": "desktop",
+  "workspace": "workspace"
+}

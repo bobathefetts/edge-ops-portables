@@ -1,0 +1,21 @@
+{
+  "name": "portscan",
+  "description": "Sample plugin: TCP connect test of a few ports on one in-scope host.",
+  "tools": [
+    {
+      "name": "scan",
+      "description": "TCP connect test (1 second timeout per port) of up to 30 ports on one host. The host must be inside the workspace scope (.byob\\scope.json). Reports open, closed or no answer for each port.",
+      "access": "read",
+      "params": {
+        "type": "object",
+        "properties": {
+          "target": { "type": "string", "description": "Host name or IPv4 address (must be in scope)." },
+          "ports": { "type": "array", "items": { "type": "integer" }, "description": "Up to 30 TCP port numbers, e.g. [22, 443, 902, 5985]." }
+        },
+        "required": ["target", "ports"]
+      },
+      "script": "scan.ps1",
+      "timeout_sec": 60
+    }
+  ]
+}

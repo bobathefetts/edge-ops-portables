@@ -10,3 +10,6 @@ Zero-install, zero-EXE Windows packages converted to follow the [FleetHacker Edg
 Verify `.sha256`, right-click each `.zip` -> **Properties -> Unblock**, extract the whole folder, and double-click `BYOB.lnk` or `Yap.lnk`.
 
 See [byob-portable/README.md](byob-portable/README.md) and [yap-portable/README.md](yap-portable/README.md) for full details.
+
+## BYOB Explorer (`explorer-portable`)
+A third package, built from `byob-portable`: a **read-only network explorer and investigator** for isolated lab enclaves (VMware ESXi hosts with Windows/Linux VMs), run from a Windows management laptop against an OpenAI-compatible model on another box. It explores the allowed scope on its own and writes a markdown knowledge base, investigates problems you describe in chat, keeps lab credentials in one DPAPI-encrypted store (the AI only sees names), and can write its own PowerShell plugins that you review and trust. Every network query passes a read-only command gate and a per-workspace scope list. Same zero-EXE stack (Windows PowerShell 5.1 + Edge `--app`), port block `8833-8835` so it runs beside BYOB. Version 0.1.0, not yet tested on Windows: see [explorer-portable/README.md](explorer-portable/README.md).

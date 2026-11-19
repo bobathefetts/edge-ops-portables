@@ -1,0 +1,1131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BYOB Explorer</title>
+  <style>
+    :root {
+      --bg: #0c1118;
+      --sidebar: #0f1621;
+      --panel: #141d2b;
+      --card: #182232;
+      --border: #253449;
+      --text: #e6edf6;
+      --muted: #8fa2ba;
+      --accent: #38bdf8;
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --bad: #f87171;
+      --code: #0a0f16;
+    }
+    body.light {
+      --bg: #f6f8fb;
+      --sidebar: #eef2f7;
+      --panel: #ffffff;
+      --card: #f8fafc;
+      --border: #d5deea;
+      --text: #0f172a;
+      --muted: #526277;
+      --accent: #0284c7;
+      --code: #eef2f7;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); }
+    .app { display: grid; grid-template-columns: 250px 1fr 400px; height: 100vh; overflow: hidden; }
+    .app.no-pane { grid-template-columns: 250px 1fr; }
+    .app.no-pane .right-pane { display: none; }
+
+    /* Sidebar */
+    .sidebar { background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+    .brand { padding: 14px 14px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .brand h1 { margin: 0; font-size: 16px; letter-spacing: 0.03em; }
+    .side-sec { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .side-list { flex: 1; overflow-y: auto; padding: 8px; }
+    .chat-row { padding: 8px 10px; border-radius: 7px; cursor: pointer; font-size: 13px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+    .chat-row:hover { background: var(--panel); }
+    .chat-row.active { background: var(--card); border: 1px solid var(--border); }
+    .chat-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .side-foot { padding: 10px 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+
+    /* Main */
+    .main { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+    .topbar { padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--panel); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+    .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); cursor: pointer; color: var(--text); white-space: nowrap; }
+    .chip.ok { border-color: var(--ok); color: var(--ok); }
+    .chip.warn { border-color: var(--warn); color: var(--warn); }
+    .chip.bad { border-color: var(--bad); color: var(--bad); }
+    .chip.active { background: #0c4a6e; border-color: var(--accent); color: #e0f2fe; }
+    .chip.busy { border-color: var(--accent); color: var(--accent); cursor: default; }
+
+    .messages { flex: 1; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+    .msg { max-width: 860px; width: 100%; margin: 0 auto; }
+    .msg.user .bubble { background: #0e3a5c; border: 1px solid #1e5785; color: #f0f9ff; margin-left: auto; max-width: 82%; border-radius: 12px; padding: 10px 14px; white-space: pre-wrap; }
+    .msg.assistant .bubble { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; }
+    .msg-meta { font-size: 11px; color: var(--muted); margin-top: 5px; display: flex; gap: 10px; align-items: center; }
+    .step-list { margin-bottom: 10px; display: flex; flex-direction: column; gap: 5px; }
+    .step-item { font-size: 12px; padding: 6px 9px; border-radius: 6px; background: var(--card); border: 1px solid var(--border); color: var(--muted); }
+    .step-item.blocked { border-color: var(--bad); }
+    .step-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .step-head b { color: var(--text); }
+    .step-item pre { margin: 5px 0 0; white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto; background: var(--code); border: 1px solid var(--border); border-radius: 5px; padding: 6px 8px; font-size: 11.5px; color: var(--text); }
+    .step-item details summary { cursor: pointer; margin-top: 4px; }
+    .note-line { font-size: 11.5px; color: var(--muted); font-style: italic; padding: 2px 0; }
+    .approval-card { max-width: 860px; width: 100%; margin: 0 auto; background: #261b12; border: 1px solid var(--warn); border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #fde68a; }
+    .approval-card.danger { background: #2a1215; border-color: var(--bad); color: #fecaca; }
+    .approval-card pre { font-size: 11.5px; max-height: 160px; overflow: auto; margin: 6px 0; white-space: pre-wrap; background: #0a0f16; color: #e6edf6; padding: 6px 8px; border-radius: 5px; }
+    .starters { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; max-width: 780px; margin: 28px auto; }
+    .starter { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; text-align: left; }
+    .starter:hover { border-color: var(--accent); }
+    .starter b { display: block; font-size: 13px; margin-bottom: 4px; color: var(--accent); }
+    .starter span { font-size: 12px; color: var(--muted); }
+    .hint-box { max-width: 780px; margin: 0 auto; font-size: 12px; color: var(--muted); background: var(--panel); border: 1px dashed var(--border); border-radius: 10px; padding: 10px 14px; }
+
+    .composer { border-top: 1px solid var(--border); background: var(--panel); padding: 12px 18px; }
+    .composer-inner { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; }
+    .composer-row { display: flex; gap: 8px; align-items: flex-end; }
+    textarea.input-box { flex: 1; min-height: 44px; max-height: 200px; resize: vertical; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: inherit; font-size: 13px; }
+
+    /* Right pane */
+    .right-pane { background: var(--sidebar); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+    .pane-tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--panel); }
+    .pane-tab { flex: 1; padding: 10px 6px; text-align: center; font-size: 12px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; }
+    .pane-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+    .pane-body { flex: 1; overflow-y: auto; padding: 12px; font-size: 13px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+    .card-title { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
+    .card-meta { font-size: 11px; color: var(--muted); }
+    .kb-row { padding: 7px 9px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; }
+    .kb-row:hover { background: var(--panel); border-color: var(--border); }
+    .kb-row .p { font-family: Consolas, monospace; font-size: 12px; color: var(--accent); }
+    .kb-row .h { font-size: 12px; color: var(--text); }
+    .kb-row .m { font-size: 10.5px; color: var(--muted); }
+    .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--border); margin-right: 4px; white-space: nowrap; }
+    .badge.ok { border-color: var(--ok); color: var(--ok); }
+    .badge.warn { border-color: var(--warn); color: var(--warn); }
+    .badge.bad { border-color: var(--bad); color: var(--bad); background: rgba(248,113,113,0.12); }
+    .badge.info { border-color: var(--accent); color: var(--accent); }
+
+    /* Controls */
+    button { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 11px; font-size: 12px; cursor: pointer; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #06131f; font-weight: 600; }
+    button.explore { background: #065f46; border-color: var(--ok); color: #d1fae5; font-weight: 600; }
+    button.danger { background: #451a1a; border-color: #7f1d1d; color: #fecaca; }
+    button:hover { filter: brightness(1.1); }
+    button:disabled { opacity: 0.5; cursor: default; }
+    input[type=text], input[type=password], input[type=number], select, textarea.field { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; font-family: inherit; font-size: 12px; }
+    textarea.field { font-family: Consolas, monospace; }
+    label { display: block; font-size: 11px; color: var(--muted); margin: 8px 0 3px; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+    .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 12px; }
+    .help { font-size: 11.5px; color: var(--muted); margin: 6px 0; line-height: 1.45; }
+    .warnbox { font-size: 12px; border: 1px solid var(--bad); background: #2a1215; color: #fecaca; border-radius: 6px; padding: 8px 10px; margin: 8px 0; }
+    .cautionbox { font-size: 12px; border: 1px solid var(--warn); background: #261b12; color: #fde68a; border-radius: 6px; padding: 8px 10px; margin: 8px 0; }
+    .errline { font-size: 12px; color: var(--bad); margin: 4px 0; }
+    .okline { font-size: 12px; color: var(--ok); margin: 4px 0; }
+    table.grid { width: 100%; border-collapse: collapse; font-size: 12px; margin: 6px 0; }
+    table.grid th, table.grid td { border: 1px solid var(--border); padding: 4px 6px; text-align: left; vertical-align: top; }
+
+    /* Markdown */
+    .md pre { background: var(--code); padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 12px; border: 1px solid var(--border); white-space: pre-wrap; }
+    .md code { background: var(--code); padding: 1px 4px; border-radius: 4px; font-size: 12px; }
+    .md pre code { padding: 0; background: none; }
+    .md p { margin: 0 0 8px; }
+    .md ul, .md ol { margin: 4px 0 8px 18px; padding: 0; }
+    .md h2, .md h3, .md h4, .md h5 { margin: 10px 0 6px; }
+    .md h2 { font-size: 16px; } .md h3 { font-size: 14px; } .md h4, .md h5 { font-size: 13px; }
+    .md table { border-collapse: collapse; font-size: 12px; margin: 6px 0; }
+    .md th, .md td { border: 1px solid var(--border); padding: 3px 6px; text-align: left; }
+
+    /* Modal */
+    .modal-bg { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); display: none; align-items: center; justify-content: center; z-index: 50; }
+    .modal-bg.open { display: flex; }
+    .modal { width: min(820px, 96vw); max-height: 92vh; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
+    .modal-head { padding: 14px 18px 8px; border-bottom: 1px solid var(--border); }
+    .modal-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .modal-body { overflow-y: auto; padding: 4px 18px 18px; }
+    .modal-foot { padding: 10px 18px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
+    .sec { border-bottom: 1px solid var(--border); padding: 12px 0 14px; }
+    .sec h3 { margin: 4px 0 6px; font-size: 14px; color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="app" id="appRoot">
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>BYOB Explorer</h1>
+        <button class="primary" onclick="newChat()">+ New</button>
+      </div>
+      <div class="side-sec">
+        <label style="margin-top:0;">Workspace (one per lab enclave)</label>
+        <div style="display:flex;gap:6px;">
+          <select id="wsSelect" onchange="onWorkspaceChange()"></select>
+          <button onclick="addWorkspace()" title="Add a workspace folder">+</button>
+        </div>
+        <label>Search chats (Ctrl+F)</label>
+        <input type="text" id="chatSearch" placeholder="Filter chats..." oninput="renderChatList()">
+      </div>
+      <div class="side-list" id="chatList"></div>
+      <div class="side-foot">
+        <button style="flex:1;" onclick="openSettings()">Settings (Ctrl+,)</button>
+        <button class="danger" onclick="shutdownApp()" title="Stop the BYOB Explorer host">Quit</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="chips">
+          <strong id="chatTitle" style="font-size:14px;">New chat</strong>
+          <span class="chip" id="modelChip" onclick="openSettings('model')">No model</span>
+          <span class="chip" id="approvalChip" onclick="cycleApprovals()" title="Click to switch between ask_writes and ask_all">Approvals</span>
+          <span class="chip" id="scopeChip" onclick="openSettings('scope')">Scope: ...</span>
+          <span class="chip" id="credsChip" onclick="openSettings('creds')">Creds: ...</span>
+          <span class="chip busy" id="progressChip" style="display:none;"></span>
+        </div>
+        <div class="chips">
+          <span class="chip" onclick="togglePane('knowledge')">Knowledge</span>
+          <span class="chip" onclick="togglePane('artifacts')">Artifacts</span>
+          <span class="chip" onclick="togglePane('plan')">Plan</span>
+        </div>
+      </div>
+
+      <div class="messages" id="messages"></div>
+      <div id="approvalHost" style="padding:0 18px 8px;"></div>
+
+      <div class="composer">
+        <div class="composer-inner">
+          <div id="attachPreview" style="font-size:11px;color:var(--muted);"></div>
+          <div class="composer-row">
+            <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="onAttach(event)">
+            <button onclick="document.getElementById('fileInput').click()" title="Attach a screenshot">Attach</button>
+            <textarea class="input-box" id="promptBox" placeholder="Describe a problem to investigate, or ask about the network... (Enter to send, Shift+Enter for a new line)"></textarea>
+            <button class="primary" id="sendBtn" onclick="sendMessage()" title="Chat: the AI investigates and reports back">Send</button>
+            <button class="explore" id="exploreBtn" onclick="startExplore()" title="Explore on its own, read-only, working the frontier list. Text in the box is used as extra guidance.">Explore</button>
+            <button class="danger" id="stopBtn" style="display:none;" onclick="stopTurn()">Stop</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="right-pane">
+      <div class="pane-tabs">
+        <div class="pane-tab active" id="paneTab_knowledge" onclick="setPaneTab('knowledge')">Knowledge</div>
+        <div class="pane-tab" id="paneTab_artifacts" onclick="setPaneTab('artifacts')">Artifacts</div>
+        <div class="pane-tab" id="paneTab_plan" onclick="setPaneTab('plan')">Plan</div>
+      </div>
+      <div class="pane-body" id="paneBody"></div>
+    </aside>
+  </div>
+
+  <!-- Settings -->
+  <div class="modal-bg" id="settingsModal">
+    <div class="modal">
+      <div class="modal-head">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2 style="margin:0;font-size:16px;">Settings</h2>
+          <button onclick="closeSettings()">Close</button>
+        </div>
+        <div class="modal-nav">
+          <button onclick="gotoSec('model')">Model</button>
+          <button onclick="gotoSec('limits')">Run limits</button>
+          <button onclick="gotoSec('approvals')">Approvals</button>
+          <button onclick="gotoSec('creds')">Credentials</button>
+          <button onclick="gotoSec('scope')">Scope</button>
+          <button onclick="gotoSec('plugins')">Plugins</button>
+          <button onclick="gotoSec('general')">General</button>
+        </div>
+      </div>
+      <div class="modal-body" id="settingsBody">
+        <div class="sec" id="sec_model">
+          <h3>Model</h3>
+          <div class="help">The model runs on another computer. Enter its OpenAI-compatible address (it must support tool calling).</div>
+          <label>Base URL</label>
+          <input type="text" id="setUrl" placeholder="http://<model-server>:8080/v1">
+          <div class="row2">
+            <div><label>Model name</label><input type="text" id="setModel" placeholder="as listed by the server (Detect fills this in)"></div>
+            <div><label>API kind</label>
+              <select id="setApi"><option value="auto">Auto</option><option value="openai">OpenAI-compatible (/v1/chat/completions)</option><option value="anthropic">Anthropic (/v1/messages)</option></select>
+            </div>
+          </div>
+          <label>API key (stored in data\secrets.json; leave blank to keep the current one)</label>
+          <input type="password" id="setKey" autocomplete="new-password">
+          <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button onclick="detectModels()">Detect</button>
+            <button onclick="testConnection()">Test</button>
+            <span id="testMsg" class="help"></span>
+          </div>
+          <div id="detectedBox" class="help"></div>
+        </div>
+
+        <div class="sec" id="sec_limits">
+          <h3>Run limits</h3>
+          <div class="row3">
+            <div><label>Max steps per chat turn</label><input type="number" id="setStepsChat" min="1" max="5000"></div>
+            <div><label>Max steps per Explore run</label><input type="number" id="setStepsExplore" min="1" max="5000"></div>
+            <div><label>Model request timeout (s)</label><input type="number" id="setTimeout" min="10" max="7200"></div>
+          </div>
+          <div class="row3">
+            <div><label>Max reply tokens</label><input type="number" id="setMaxTokens" min="64" max="200000"></div>
+            <div><label>Temperature</label><input type="number" id="setTemp" min="0" max="2" step="0.05"></div>
+            <div><label>Context budget (characters)</label><input type="number" id="setBudget" min="2000" max="10000000" step="1000"></div>
+          </div>
+          <div class="help">A step is one model call. When the conversation passes 70% of the context budget, old tool outputs are shortened and, if needed, the work so far is summarised (full outputs stay in workspace\raw). Roughly 4 characters = 1 token: set the budget to about 3x your model's context window in tokens, or less.</div>
+        </div>
+
+        <div class="sec" id="sec_approvals">
+          <h3>Approvals</h3>
+          <select id="setApprovals" onchange="renderYoloWarn()">
+            <option value="ask_writes">Ask before file writes, commands and untrusted plugins (recommended)</option>
+            <option value="ask_all">Ask before every tool call</option>
+            <option value="yolo">YOLO: never ask (except untrusted plugins)</option>
+          </select>
+          <div id="yoloWarn" class="warnbox" style="display:none;"><b>Danger.</b> With YOLO, <code>run_command</code> will run ANY PowerShell command without asking, including commands that use the stored admin credentials it can reach. File writes also stop asking. Use this only while you watch.</div>
+          <div class="help">Read-only network queries (<code>net_query</code>, <code>ssh_query</code>), the knowledge base and the frontier never ask: the read-only gate checks them instead.</div>
+        </div>
+
+        <div class="sec" id="sec_creds">
+          <h3>Credentials</h3>
+          <div class="help">Lab logins the AI may use for read-only queries. Passwords are encrypted for this Windows user on this computer (DPAPI) in <code>data\credentials.json</code>. The AI only ever sees the names, kinds, user names and notes &mdash; never a password.</div>
+          <div id="credTable"></div>
+          <div class="card" style="margin-top:8px;">
+            <div class="card-title" id="credFormTitle">Add a credential</div>
+            <div class="row3">
+              <div><label>Name (letters, digits, _ -)</label><input type="text" id="credName" placeholder="e.g. lab-win-admin"></div>
+              <div><label>Kind</label><select id="credKind"><option value="windows">windows (WinRM)</option><option value="vsphere">vsphere (vCenter / ESXi)</option><option value="linux">linux (ssh)</option></select></div>
+              <div><label>User name</label><input type="text" id="credUser" placeholder="LAB\admin, root, administrator@vsphere.local"></div>
+            </div>
+            <div class="row2">
+              <div><label id="credPassLabel">Password</label><input type="password" id="credPass" autocomplete="new-password"></div>
+              <div><label>SSH key path (linux, optional)</label><input type="text" id="credKey" placeholder="C:\Users\me\.ssh\id_lab"></div>
+            </div>
+            <label>Note (shown to the AI: say what it is for, e.g. the vCenter host name)</label>
+            <input type="text" id="credNote" placeholder="vCenter vc01.lab.local">
+            <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+              <button class="primary" onclick="saveCred()">Save credential</button>
+              <button onclick="clearCredForm()">Clear</button>
+              <span id="credMsg" class="help"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sec" id="sec_scope">
+          <h3>Scope</h3>
+          <div class="help" id="scopeWsLabel"></div>
+          <div class="help">The AI can only query hosts listed under Allow, and never those under Deny (deny wins). <b>Nothing is allowed until this is set.</b> One entry per line: an IPv4 address (<code>10.20.30.5</code>), an IPv4 subnet (<code>10.20.30.0/24</code>, /8 or smaller) or a host name pattern (<code>esx01</code>, <code>*.sw4.lab</code>). Names are not looked up in DNS: <code>esx01</code> does not match <code>esx01.sw4.lab</code>.</div>
+          <div class="row2">
+            <div><label>Allow</label><textarea class="field" id="scopeAllow" rows="8" placeholder="10.20.30.0/24&#10;esx01&#10;*.sw4.lab"></textarea></div>
+            <div><label>Deny</label><textarea class="field" id="scopeDeny" rows="8" placeholder="10.20.30.1"></textarea></div>
+          </div>
+          <div id="scopeErrors"></div>
+          <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+            <button class="primary" onclick="saveScope()">Save scope</button>
+            <span id="scopeMsg" class="help"></span>
+          </div>
+        </div>
+
+        <div class="sec" id="sec_plugins">
+          <h3>Plugins</h3>
+          <div class="warnbox"><b>Plugins are NOT checked by the read-only gate.</b> A plugin is PowerShell code that can do anything your Windows account can do. Trusting a plugin means trusting its code: open its folder and read every .ps1 file first. Untrusted or changed plugins ask before every run.</div>
+          <div id="pluginList" class="help">Loading...</div>
+          <button onclick="loadPlugins()">Refresh</button>
+        </div>
+
+        <div class="sec" id="sec_general" style="border-bottom:none;">
+          <h3>General</h3>
+          <label>Extra instructions for every chat</label>
+          <textarea class="field" id="setExtra" rows="3" placeholder="Optional, e.g. naming conventions of this lab..."></textarea>
+          <label>Theme</label>
+          <select id="setTheme"><option value="dark">Dark</option><option value="light">Light</option></select>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <span class="help" style="margin-right:auto;">Credentials, Scope and Plugins save with their own buttons.</span>
+        <span id="saveMsg" class="help"></span>
+        <button class="primary" onclick="saveSettings()">Save settings</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let state = { settings: {}, workspaces: [], chats: [], runningChats: [] };
+    let activeChatId = null;
+    let activePane = 'knowledge';
+    let paneOpen = true;
+    let attachments = [];
+    let activeRun = false;
+    let runChatId = null;
+    let eventCursor = 0;
+    let live = null;
+    let kb = { wsId: null, files: [], frontier: { open: 0, done: 0, skipped: 0 }, rawCount: 0, viewing: null, error: '' };
+    let creds = [];
+    let editingCred = null;
+
+    async function api(path, method, body) {
+      const opts = { method: method || 'GET', cache: 'no-store', headers: {} };
+      if (body !== undefined && body !== null) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+      let res, data = {};
+      try { res = await fetch(path, opts); } catch (e) { return { error: 'The BYOB Explorer host is not answering.', _status: 0 }; }
+      try { data = await res.json(); } catch (e) { data = {}; }
+      if (data === null || typeof data !== 'object') data = { value: data };
+      data._status = res.status;
+      if (!res.ok && !data.error) data.error = 'HTTP ' + res.status;
+      return data;
+    }
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function mdInline(s) {
+      return esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    }
+
+    function renderMd(text) {
+      const lines = String(text || '').replace(/\r/g, '').split('\n');
+      let html = '';
+      let i = 0;
+      while (i < lines.length) {
+        const l = lines[i];
+        if (/^\s*```/.test(l)) {
+          const buf = [];
+          i++;
+          while (i < lines.length && !/^\s*```/.test(lines[i])) { buf.push(lines[i]); i++; }
+          i++;
+          html += '<pre><code>' + esc(buf.join('\n')) + '</code></pre>';
+          continue;
+        }
+        const h = /^(#{1,5})\s+(.*)$/.exec(l);
+        if (h) { const lv = Math.min(h[1].length + 1, 5); html += `<h${lv}>${mdInline(h[2])}</h${lv}>`; i++; continue; }
+        if (/^\s*\|/.test(l)) {
+          const rows = [];
+          while (i < lines.length && /^\s*\|/.test(lines[i])) { rows.push(lines[i]); i++; }
+          let t = '<table>';
+          let first = true;
+          for (const r of rows) {
+            if (/^\s*\|?\s*:?-{2,}/.test(r)) continue;
+            const cells = r.trim().replace(/^\|/, '').replace(/\|$/, '').split('|');
+            const tag = first ? 'th' : 'td';
+            t += '<tr>' + cells.map(c => `<${tag}>${mdInline(c.trim())}</${tag}>`).join('') + '</tr>';
+            first = false;
+          }
+          html += t + '</table>';
+          continue;
+        }
+        if (/^\s*[-*]\s+/.test(l)) {
+          let t = '<ul>';
+          while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) { t += '<li>' + mdInline(lines[i].replace(/^\s*[-*]\s+/, '')) + '</li>'; i++; }
+          html += t + '</ul>';
+          continue;
+        }
+        if (/^\s*\d+[.)]\s+/.test(l)) {
+          let t = '<ol>';
+          while (i < lines.length && /^\s*\d+[.)]\s+/.test(lines[i])) { t += '<li>' + mdInline(lines[i].replace(/^\s*\d+[.)]\s+/, '')) + '</li>'; i++; }
+          html += t + '</ol>';
+          continue;
+        }
+        if (!l.trim()) { i++; continue; }
+        const buf = [];
+        while (i < lines.length && lines[i].trim() && !/^\s*(```|#{1,5}\s|\||[-*]\s+|\d+[.)]\s+)/.test(lines[i])) { buf.push(mdInline(lines[i])); i++; }
+        if (!buf.length) { buf.push(mdInline(lines[i])); i++; }
+        html += '<p>' + buf.join('<br>') + '</p>';
+      }
+      return '<div class="md">' + html + '</div>';
+    }
+
+    // ------------------------------------------------------------------ state
+    async function loadState() {
+      const s = await api('/api/state');
+      if (s.error) { document.getElementById('messages').innerHTML = `<div class="hint-box" style="color:var(--bad);">${esc(s.error)}</div>`; return; }
+      state = s;
+      document.body.className = state.settings.theme === 'light' ? 'light' : '';
+      if (!activeChatId || !state.chats.find(c => c.id === activeChatId)) activeChatId = state.chats.length ? state.chats[0].id : null;
+      renderWorkspaces();
+      renderChatList();
+      renderTopbar();
+      if (!activeRun) renderChat();
+      renderPane();
+      if (!activeRun && activeChatId && (state.runningChats || []).indexOf(activeChatId) >= 0) resumeRun(activeChatId);
+    }
+
+    async function refreshStateLight() {
+      const s = await api('/api/state');
+      if (s.error) return;
+      state = s;
+      renderTopbar();
+      renderPane();
+    }
+
+    function activeChat() { return state.chats.find(c => c.id === activeChatId) || null; }
+    function activeWs() {
+      const c = activeChat();
+      const id = c ? c.workspaceId : (state.workspaces[0] && state.workspaces[0].id);
+      return state.workspaces.find(w => w.id === id) || state.workspaces[0] || null;
+    }
+
+    function renderWorkspaces() {
+      const sel = document.getElementById('wsSelect');
+      const ws = activeWs();
+      sel.innerHTML = '';
+      for (const w of state.workspaces) {
+        const opt = document.createElement('option');
+        opt.value = w.id;
+        opt.textContent = `${w.name} (${w.path})`;
+        sel.appendChild(opt);
+      }
+      if (ws) sel.value = ws.id;
+    }
+
+    function renderChatList() {
+      const q = (document.getElementById('chatSearch').value || '').toLowerCase();
+      const box = document.getElementById('chatList');
+      box.innerHTML = '';
+      for (const c of state.chats) {
+        if (q && !(c.title || '').toLowerCase().includes(q)) continue;
+        const div = document.createElement('div');
+        div.className = 'chat-row' + (c.id === activeChatId ? ' active' : '');
+        div.onclick = () => { if (activeRun) return; activeChatId = c.id; kb.viewing = null; renderWorkspaces(); renderChatList(); renderTopbar(); renderChat(); renderPane(); refreshKb(); };
+        const span = document.createElement('span');
+        span.className = 'chat-title';
+        span.textContent = c.title || 'New chat';
+        const del = document.createElement('button');
+        del.textContent = 'x';
+        del.style.padding = '1px 6px';
+        del.title = 'Delete chat';
+        del.onclick = async (e) => {
+          e.stopPropagation();
+          if (!confirm('Delete this chat? (The knowledge base and raw files stay.)')) return;
+          const r = await api('/api/chats', 'POST', { action: 'delete', chatId: c.id });
+          if (r.error) alert(r.error);
+          await loadState();
+        };
+        div.appendChild(span);
+        div.appendChild(del);
+        box.appendChild(div);
+      }
+    }
+
+    function renderTopbar() {
+      const chat = activeChat();
+      document.getElementById('chatTitle').textContent = chat ? chat.title : 'BYOB Explorer';
+      const inf = state.settings.inference || {};
+      const mc = document.getElementById('modelChip');
+      mc.textContent = inf.model ? inf.model : 'Set up the model';
+      mc.className = 'chip' + (inf.model && inf.base_url ? '' : ' warn');
+      const ap = state.settings.approvals || 'ask_writes';
+      const ac = document.getElementById('approvalChip');
+      ac.textContent = ap === 'yolo' ? 'Approvals: YOLO' : 'Approvals: ' + ap;
+      ac.className = 'chip' + (ap === 'yolo' ? ' bad' : '');
+      const ws = activeWs();
+      const sc = document.getElementById('scopeChip');
+      if (ws && ws.scopeExists) { sc.textContent = `Scope: ${ws.scopeCount} entr${ws.scopeCount === 1 ? 'y' : 'ies'}`; sc.className = 'chip ok'; }
+      else if (ws && ws.scopeFileExists) { sc.textContent = 'Scope: invalid file'; sc.className = 'chip bad'; }
+      else { sc.textContent = 'Scope: not set'; sc.className = 'chip warn'; }
+      const cc = document.getElementById('credsChip');
+      cc.textContent = 'Creds: ' + (state.credentialCount || 0);
+      cc.className = 'chip' + ((state.credentialCount || 0) ? '' : ' warn');
+    }
+
+    // ------------------------------------------------------------------ chat rendering
+    function stepHtml(s) {
+      const a = s.args || {};
+      const pv = String(s.preview || '');
+      const blocked = s.status === 'blocked' || /^(BLOCKED|LOOP GUARD)/.test(pv);
+      let badge = '';
+      if (blocked) badge = '<span class="badge bad">BLOCKED</span>';
+      else if (s.status === 'denied') badge = '<span class="badge warn">denied</span>';
+      else if (s.status === 'error') badge = '<span class="badge bad">error</span>';
+      else if (s.status === 'stopped') badge = '<span class="badge warn">stopped</span>';
+      else if (s.status === 'running') badge = '<span class="badge info">running...</span>';
+      else badge = '<span class="badge ok">done</span>';
+      let head = '', body = '';
+      if (s.tool === 'net_query' || s.tool === 'ssh_query') {
+        const via = s.tool === 'ssh_query' ? 'ssh' : (a.via || 'local');
+        const target = a.target || (via === 'local' ? 'this laptop' : '?');
+        head = `<b>${esc(s.tool)}</b> via <code>${esc(via)}</code> &rarr; <code>${esc(target)}</code>${a.credential ? ' as <code>' + esc(a.credential) + '</code>' : ''} ${badge} <span>${esc(a.purpose || '')}</span>`;
+        body = `<pre>${esc(a.command || '')}</pre>`;
+      } else if (s.tool === 'run_command') {
+        head = `<b>run_command</b> ${badge}`;
+        body = `<pre>${esc(a.command || '')}</pre>`;
+      } else {
+        let summary = '';
+        try { summary = JSON.stringify(a); } catch (e) { summary = ''; }
+        if (summary.length > 160) summary = summary.slice(0, 160) + '...';
+        head = `<b>${esc(s.tool)}</b> ${badge} <span style="font-family:Consolas,monospace;">${esc(summary === '{}' ? '' : summary)}</span>`;
+      }
+      const res = pv ? `<details${blocked ? ' open' : ''}><summary>result</summary><pre>${esc(pv)}</pre></details>` : '';
+      return `<div class="step-item${blocked ? ' blocked' : ''}"><div class="step-head">${head}</div>${body}${res}</div>`;
+    }
+
+    function renderChat() {
+      const box = document.getElementById('messages');
+      const chat = activeChat();
+      box.innerHTML = '';
+      if (!chat || !chat.messages || !chat.messages.length) {
+        const ws = activeWs();
+        const inf = state.settings.inference || {};
+        const todo = [];
+        if (!inf.base_url || !inf.model) todo.push('set the model (Settings &gt; Model)');
+        if (!state.credentialCount) todo.push('add lab credentials (Settings &gt; Credentials)');
+        if (!ws || !ws.scopeExists) todo.push('set the scope (Settings &gt; Scope)');
+        box.innerHTML = `
+          ${todo.length ? `<div class="hint-box">Before exploring: ${todo.join(', ')}.</div>` : ''}
+          <div class="starters">
+            <div class="starter" onclick="startExplore('')"><b>Explore this network</b><span>Maps the lab on its own (read-only) and writes the knowledge base.</span></div>
+            <div class="starter" onclick="useStarter('What do you know about this network so far? Summarise the knowledge base: hosts, VMs, networks, services, and the open questions.')"><b>What do you know about this network so far?</b><span>Summary from the knowledge base.</span></div>
+            <div class="starter" onclick="prefill('Investigate a problem.\\nSymptom: \\nWhere it is seen (host / VM / service): \\nSince when: \\nAnything that changed recently: ')"><b>Investigate a problem</b><span>Describe the symptom; the AI checks and reports likely causes.</span></div>
+            <div class="starter" onclick="prefill('Baseline the server <host name or IP>: record its OS, roles, services, listening ports, scheduled tasks, disks and network settings into kb/hosts/, keeping the raw outputs so later changes can be compared with baseline_diff.')"><b>Baseline a server</b><span>Records a known-good state of one host.</span></div>
+          </div>`;
+        return;
+      }
+      for (const m of chat.messages) {
+        const wrap = document.createElement('div');
+        wrap.className = 'msg ' + (m.role === 'user' ? 'user' : 'assistant');
+        if (m.role === 'user') {
+          wrap.innerHTML = `<div class="bubble">${m.mode === 'explore' ? '<b>[Explore]</b> ' : ''}${esc(m.text)}</div>`;
+        } else {
+          let stepsHtml = '';
+          if (m.steps && m.steps.length) {
+            const n = m.steps.length;
+            const inner = m.steps.map(stepHtml).join('');
+            stepsHtml = n > 6 ? `<details style="margin-bottom:8px;"><summary class="help">${n} tool steps${m.stepsUsed ? ', ' + m.stepsUsed + ' model calls' : ''}</summary><div class="step-list">${inner}</div></details>` : `<div class="step-list">${inner}</div>`;
+          }
+          const think = m.thinking ? `<details style="margin-bottom:8px;font-size:12px;color:var(--muted);"><summary>Thinking</summary><pre style="white-space:pre-wrap;">${esc(m.thinking)}</pre></details>` : '';
+          const color = m.endReason === 'error' ? 'color:var(--bad);' : '';
+          wrap.innerHTML = `<div class="bubble">${think}${stepsHtml}<div style="${color}">${renderMd(m.text)}</div></div>
+            <div class="msg-meta"><span>${esc(m.time || '')}</span>${m.endReason && m.endReason !== 'done' ? '<span class="badge warn">' + esc(m.endReason) + '</span>' : ''}<button onclick="undoTurn('${esc(m.turnId || '')}')" title="Restore files changed by write_file/edit_file in this turn">Undo file edits</button></div>`;
+        }
+        box.appendChild(wrap);
+      }
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function useStarter(text) { document.getElementById('promptBox').value = text; sendMessage(); }
+    function prefill(text) { const b = document.getElementById('promptBox'); b.value = text; b.focus(); }
+
+    async function newChat() {
+      if (activeRun) return;
+      const wsId = document.getElementById('wsSelect').value;
+      const c = await api('/api/chats', 'POST', { action: 'new', workspaceId: wsId });
+      if (c.error) { alert(c.error); return; }
+      activeChatId = c.id;
+      kb.viewing = null;
+      await loadState();
+      refreshKb();
+    }
+
+    async function addWorkspace() {
+      const p = prompt('Full path of a folder for this lab (it holds the kb, raw outputs and scope):');
+      if (!p) return;
+      const ws = await api('/api/workspaces', 'POST', { path: p });
+      if (ws.error) { alert(ws.error); return; }
+      const c = await api('/api/chats', 'POST', { action: 'new', workspaceId: ws.id });
+      activeChatId = c.id;
+      await loadState();
+      refreshKb();
+    }
+
+    function onWorkspaceChange() { newChat(); }
+
+    function onAttach(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        attachments.push({ name: file.name, dataUrl: reader.result });
+        document.getElementById('attachPreview').textContent = 'Attached: ' + attachments.map(a => a.name).join(', ');
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    }
+
+    function sendMessage() {
+      const box = document.getElementById('promptBox');
+      const text = box.value.trim();
+      if ((!text && !attachments.length) || activeRun || !activeChatId) return;
+      startTurn(text, 'chat');
+    }
+
+    function startExplore(guidance) {
+      if (activeRun || !activeChatId) return;
+      const box = document.getElementById('promptBox');
+      const text = (guidance === undefined || guidance === null) ? box.value.trim() : String(guidance);
+      startTurn(text, 'explore');
+    }
+
+    async function startTurn(text, mode) {
+      const box = document.getElementById('promptBox');
+      box.value = '';
+      const sendAtts = mode === 'chat' ? attachments.slice() : [];
+      if (mode === 'chat') { attachments = []; document.getElementById('attachPreview').textContent = ''; }
+      const chat = activeChat();
+      const shown = mode === 'explore' ? ('Explore this network' + (text ? ' - ' + text : '')) : text;
+      chat.messages.push({ role: 'user', text: shown, mode });
+      renderChat();
+      beginRunUi(activeChatId, mode);
+      const res = await api('/api/chat/send', 'POST', { chatId: activeChatId, text, mode, attachments: sendAtts });
+      if (res.error) {
+        live.notes.push('Could not start: ' + res.error);
+        renderLive();
+        endRunUi();
+        return;
+      }
+      pollRun(runChatId);
+    }
+
+    function beginRunUi(chatId, mode) {
+      activeRun = true;
+      runChatId = chatId;
+      eventCursor = 0;
+      live = { steps: [], running: null, notes: [], mode, step: 0, maxSteps: 0 };
+      document.getElementById('sendBtn').style.display = 'none';
+      document.getElementById('exploreBtn').style.display = 'none';
+      document.getElementById('stopBtn').style.display = '';
+      const pc = document.getElementById('progressChip');
+      pc.style.display = '';
+      pc.textContent = mode === 'explore' ? 'exploring...' : 'working...';
+      const liveBox = document.createElement('div');
+      liveBox.className = 'msg assistant';
+      liveBox.id = 'liveAssistant';
+      document.getElementById('messages').appendChild(liveBox);
+      renderLive();
+    }
+
+    function renderLive() {
+      const el = document.getElementById('liveAssistant');
+      if (!el || !live) return;
+      let html = '';
+      const steps = live.steps.slice(-40);
+      if (live.steps.length > 40) html += `<div class="note-line">${live.steps.length - 40} earlier step(s) not shown here (all are kept in the reply).</div>`;
+      html += '<div class="step-list">' + steps.map(stepHtml).join('') + (live.running ? stepHtml({ tool: live.running.tool, args: live.running.args, status: 'running' }) : '') + '</div>';
+      for (const n of live.notes.slice(-8)) html += `<div class="note-line">${esc(n)}</div>`;
+      html += `<div class="note-line">${live.mode === 'explore' ? 'Exploring' : 'Working'}${live.maxSteps ? ' (step ' + live.step + ' of ' + live.maxSteps + ')' : ''}...</div>`;
+      el.innerHTML = `<div class="bubble">${html}</div>`;
+      const box = document.getElementById('messages');
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function endRunUi() {
+      activeRun = false;
+      runChatId = null;
+      document.getElementById('sendBtn').style.display = '';
+      document.getElementById('exploreBtn').style.display = '';
+      document.getElementById('stopBtn').style.display = 'none';
+      document.getElementById('stopBtn').disabled = false;
+      document.getElementById('progressChip').style.display = 'none';
+      document.getElementById('approvalHost').innerHTML = '';
+    }
+
+    function resumeRun(chatId) {
+      const chat = state.chats.find(c => c.id === chatId);
+      const last = chat && chat.messages.length ? chat.messages[chat.messages.length - 1] : null;
+      renderChat();
+      beginRunUi(chatId, last && last.mode === 'explore' ? 'explore' : 'chat');
+      pollRun(chatId);
+    }
+
+    async function pollRun(chatId) {
+      if (!activeRun || chatId !== runChatId) return;
+      const data = await api(`/api/chat/events?chatId=${encodeURIComponent(chatId)}&since=${eventCursor}`);
+      if (!data.error) {
+        eventCursor = data.next || eventCursor;
+        let finished = false;
+        let refreshArt = false;
+        for (const ev of (data.events || [])) {
+          if (ev.type === 'progress') {
+            live.step = ev.step; live.maxSteps = ev.maxSteps;
+            document.getElementById('progressChip').textContent = `${ev.mode === 'explore' ? 'explore ' : ''}step ${ev.step}/${ev.maxSteps}`;
+          } else if (ev.type === 'tool_start') {
+            live.running = { tool: ev.tool, args: ev.args };
+          } else if (ev.type === 'tool_done') {
+            live.running = null;
+            live.steps.push(ev.step);
+          } else if (ev.type === 'approval_needed') {
+            showApproval(chatId, ev.approval);
+          } else if (ev.type === 'approval_done') {
+            document.getElementById('approvalHost').innerHTML = '';
+          } else if (ev.type === 'trimmed') {
+            live.notes.push(`Shortened ${ev.count} old tool output(s) to save context (full text stays in raw/).`);
+          } else if (ev.type === 'compacted') {
+            live.notes.push('Context was getting full: the work so far was summarised and the run continues from the summary.');
+          } else if (ev.type === 'retry') {
+            live.notes.push(`Model call failed (${ev.error}). Retry ${ev.attempt} in ${ev.waitSec}s...`);
+          } else if (ev.type === 'nudge') {
+            live.notes.push(ev.kind === 'bad_streak' ? 'Several calls in a row were blocked or failed; told the model to change approach.' : `Frontier still has ${ev.open} open item(s): continuing.`);
+          } else if (ev.type === 'artifact' || ev.type === 'plan') {
+            refreshArt = true;
+          } else if (ev.type === 'done' || ev.type === 'error') {
+            finished = true;
+          }
+        }
+        renderLive();
+        if (refreshArt) await refreshStateLight();
+        if (finished || !data.running) {
+          endRunUi();
+          await loadState();
+          refreshKb();
+          return;
+        }
+      }
+      setTimeout(() => pollRun(chatId), 300);
+    }
+
+    function showApproval(chatId, apr) {
+      const host = document.getElementById('approvalHost');
+      const a = apr.args || {};
+      const danger = apr.mustConfirm || apr.tool === 'run_command' || String(apr.tool).indexOf('plg_') === 0;
+      let detail = '';
+      if (apr.tool === 'run_command') detail = `<pre>${esc(a.command || '')}</pre>`;
+      else if (apr.tool === 'write_file' || apr.tool === 'edit_file') detail = `<div>File: <code>${esc(a.path || '')}</code></div><pre>${esc(JSON.stringify(a, null, 2)).slice(0, 4000)}</pre>`;
+      else detail = `<pre>${esc(JSON.stringify(a, null, 2))}</pre>`;
+      host.innerHTML = `
+        <div class="approval-card ${danger ? 'danger' : ''}">
+          <div><strong>Approval needed:</strong> <code>${esc(apr.tool)}</code> &mdash; ${esc(apr.warning)}</div>
+          ${detail}
+          <div style="display:flex;gap:8px;">
+            <button class="primary" onclick="respondApproval('${esc(chatId)}', '${esc(apr.id)}', true)">Allow once</button>
+            <button class="danger" onclick="respondApproval('${esc(chatId)}', '${esc(apr.id)}', false)">Deny</button>
+          </div>
+        </div>`;
+    }
+
+    async function respondApproval(chatId, id, approved) {
+      document.getElementById('approvalHost').innerHTML = '';
+      await api('/api/chat/approve', 'POST', { chatId, id, approved });
+    }
+
+    async function stopTurn() {
+      if (!runChatId) return;
+      document.getElementById('stopBtn').disabled = true;
+      if (live) { live.notes.push('Stopping...'); renderLive(); }
+      await api('/api/chat/stop', 'POST', { chatId: runChatId });
+    }
+
+    async function undoTurn(turnId) {
+      if (!turnId || !activeChatId) return;
+      if (!confirm('Restore every file that write_file / edit_file changed in this turn?')) return;
+      const r = await api('/api/chats', 'POST', { action: 'undo', chatId: activeChatId, turnId });
+      alert(r.error ? r.error : `Restored ${r.restored || 0} file(s).`);
+    }
+
+    // ------------------------------------------------------------------ right pane
+    function togglePane(tab) {
+      if (paneOpen && activePane === tab) paneOpen = false; else { paneOpen = true; activePane = tab; }
+      document.getElementById('appRoot').className = paneOpen ? 'app' : 'app no-pane';
+      setPaneTab(activePane);
+    }
+
+    function setPaneTab(tab) {
+      activePane = tab;
+      for (const t of ['knowledge', 'artifacts', 'plan']) document.getElementById('paneTab_' + t).className = 'pane-tab' + (t === tab ? ' active' : '');
+      if (tab === 'knowledge') refreshKb(); else renderPane();
+    }
+
+    async function refreshKb() {
+      const ws = activeWs();
+      if (!ws) return;
+      const r = await api('/api/kb?workspaceId=' + encodeURIComponent(ws.id));
+      if (r.error) { kb.error = r.error; } else { kb.error = ''; kb.wsId = ws.id; kb.files = r.files || []; kb.frontier = r.frontier || kb.frontier; kb.rawCount = r.rawCount || 0; }
+      if (activePane === 'knowledge') renderPane();
+    }
+
+    async function openKbFile(path) {
+      const ws = activeWs();
+      const r = await api(`/api/kb/file?workspaceId=${encodeURIComponent(ws.id)}&path=${encodeURIComponent(path)}`);
+      kb.viewing = r.error ? { path, content: 'Could not open: ' + r.error, truncated: false } : r;
+      renderPane();
+    }
+
+    function renderPane() {
+      const body = document.getElementById('paneBody');
+      if (activePane === 'knowledge') {
+        const ws = activeWs();
+        if (kb.viewing) {
+          const v = kb.viewing;
+          const isMd = /\.md$/i.test(v.path);
+          body.innerHTML = `<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;"><button onclick="kb.viewing=null;renderPane();">&larr; Back</button><code style="font-size:12px;">${esc(v.path)}</code></div>
+            ${v.truncated ? '<div class="cautionbox">Showing the first 200 KB only.</div>' : ''}
+            <div class="card">${isMd ? renderMd(v.content) : '<pre style="white-space:pre-wrap;font-size:11.5px;margin:0;">' + esc(v.content) + '</pre>'}</div>`;
+          return;
+        }
+        const f = kb.frontier || {};
+        let html = `<div class="card"><div class="card-title">${esc(ws ? ws.name : '')}</div>
+          <div class="card-meta">Frontier: <span class="badge ${f.open ? 'warn' : 'ok'}">${f.open || 0} open</span><span class="badge ok">${f.done || 0} done</span><span class="badge">${f.skipped || 0} skipped</span> &middot; ${kb.rawCount} raw output file(s)</div>
+          <div style="margin-top:6px;"><button onclick="refreshKb()">Refresh</button></div></div>`;
+        if (kb.error) html += `<div class="errline">${esc(kb.error)}</div>`;
+        if (!kb.files.length) html += '<div class="help">The knowledge base is empty. Press <b>Explore</b> to start mapping this network.</div>';
+        for (const file of kb.files) {
+          html += `<div class="kb-row" onclick="openKbFile('${esc(file.path)}')"><div class="p">${esc(file.path)}</div>${file.heading ? '<div class="h">' + esc(file.heading) + '</div>' : ''}<div class="m">${file.size} B &middot; ${esc(file.modified)}</div></div>`;
+        }
+        body.innerHTML = html;
+      } else if (activePane === 'artifacts') {
+        const chat = activeChat();
+        const arts = (chat && chat.artifacts) || [];
+        if (!arts.length) { body.innerHTML = '<div class="help">No artifacts in this chat yet.</div>'; return; }
+        body.innerHTML = arts.slice().reverse().map(a => {
+          let view = '';
+          if (a.content_type === 'text/html') {
+            view = `<iframe sandbox="allow-scripts" style="width:100%;height:280px;border:1px solid var(--border);border-radius:6px;background:#fff;" src="/api/artifact/raw?chatId=${encodeURIComponent(chat.id)}&id=${encodeURIComponent(a.id)}&version=${a.version}"></iframe>`;
+          } else if (a.content_type === 'text/csv') {
+            const rows = String(a.content).trim().split(/\r?\n/).slice(0, 40).map(r => '<tr>' + r.split(',').map(c => `<td>${esc(c)}</td>`).join('') + '</tr>').join('');
+            view = `<div style="overflow:auto;max-height:260px;"><table class="grid">${rows}</table></div>`;
+          } else {
+            view = renderMd(a.content);
+          }
+          return `<div class="card"><div class="card-title">${esc(a.title)} <span class="badge">v${esc(a.version)}</span></div><div class="card-meta">${esc(a.content_type)}</div>${view}</div>`;
+        }).join('');
+      } else if (activePane === 'plan') {
+        const chat = activeChat();
+        const steps = (chat && chat.plan) || [];
+        if (!steps.length) { body.innerHTML = '<div class="help">No plan in this chat.</div>'; return; }
+        body.innerHTML = steps.map(s => `<div class="card"><span class="badge ${s.status === 'done' ? 'ok' : (s.status === 'in_progress' ? 'info' : '')}">${esc(s.status)}</span> ${esc(s.title)}</div>`).join('');
+      }
+    }
+
+    // ------------------------------------------------------------------ settings
+    function gotoSec(name) { const el = document.getElementById('sec_' + name); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+
+    function openSettings(section) {
+      const s = state.settings;
+      const inf = s.inference || {};
+      document.getElementById('setUrl').value = inf.base_url || '';
+      document.getElementById('setModel').value = inf.model || '';
+      document.getElementById('setApi').value = inf.api || 'auto';
+      const key = document.getElementById('setKey');
+      key.value = '';
+      key.placeholder = state.hasApiKey ? '(a key is saved; type to replace it)' : '(none; leave blank if the server needs no key)';
+      document.getElementById('setStepsChat').value = s.max_steps_chat;
+      document.getElementById('setStepsExplore').value = s.max_steps_explore;
+      document.getElementById('setTimeout').value = s.request_timeout_sec;
+      document.getElementById('setMaxTokens').value = s.max_tokens;
+      document.getElementById('setTemp').value = s.temperature;
+      document.getElementById('setBudget').value = s.context_char_budget;
+      document.getElementById('setApprovals').value = s.approvals || 'ask_writes';
+      document.getElementById('setExtra').value = s.extra_instructions || '';
+      document.getElementById('setTheme').value = s.theme || 'dark';
+      document.getElementById('testMsg').textContent = '';
+      document.getElementById('saveMsg').textContent = '';
+      renderYoloWarn();
+      clearCredForm();
+      document.getElementById('settingsModal').classList.add('open');
+      loadCreds();
+      loadScope();
+      loadPlugins();
+      if (section) setTimeout(() => gotoSec(section), 50); else document.getElementById('settingsBody').scrollTop = 0;
+    }
+    function closeSettings() { document.getElementById('settingsModal').classList.remove('open'); loadState(); }
+    function renderYoloWarn() { document.getElementById('yoloWarn').style.display = document.getElementById('setApprovals').value === 'yolo' ? '' : 'none'; }
+
+    function numVal(id) { const v = document.getElementById(id).value; return v === '' ? null : Number(v); }
+
+    async function saveSettings() {
+      const next = Object.assign({}, state.settings, {
+        inference: { base_url: document.getElementById('setUrl').value.trim(), model: document.getElementById('setModel').value.trim(), api: document.getElementById('setApi').value },
+        approvals: document.getElementById('setApprovals').value,
+        max_steps_chat: numVal('setStepsChat'),
+        max_steps_explore: numVal('setStepsExplore'),
+        request_timeout_sec: numVal('setTimeout'),
+        max_tokens: numVal('setMaxTokens'),
+        temperature: numVal('setTemp'),
+        context_char_budget: numVal('setBudget'),
+        extra_instructions: document.getElementById('setExtra').value,
+        theme: document.getElementById('setTheme').value
+      });
+      const body = { settings: next };
+      const key = document.getElementById('setKey').value;
+      if (key) body.api_key = key;
+      const r = await api('/api/settings', 'POST', body);
+      document.getElementById('saveMsg').textContent = r.error ? ('Not saved: ' + r.error) : 'Saved.';
+      if (!r.error) { await loadState(); openSettingsKeepPos(); }
+    }
+    function openSettingsKeepPos() {
+      const s = state.settings;
+      document.getElementById('setStepsChat').value = s.max_steps_chat;
+      document.getElementById('setStepsExplore').value = s.max_steps_explore;
+      document.getElementById('setTimeout').value = s.request_timeout_sec;
+      document.getElementById('setMaxTokens').value = s.max_tokens;
+      document.getElementById('setTemp').value = s.temperature;
+      document.getElementById('setBudget').value = s.context_char_budget;
+      document.getElementById('setKey').value = '';
+    }
+
+    async function detectModels() {
+      const box = document.getElementById('detectedBox');
+      box.textContent = 'Asking the configured server and local ports...';
+      const r = await api('/api/detect-models', 'POST', { base_url: document.getElementById('setUrl').value.trim(), api_key: document.getElementById('setKey').value });
+      const eps = r.endpoints || [];
+      if (!eps.length) { box.textContent = 'No model server answered (check the URL, the private link and the server).'; return; }
+      box.innerHTML = eps.map((e, i) => `<div style="margin:3px 0;"><b>${esc(e.name)}</b> <code>${esc(e.url)}</code>: ${(e.models || []).map((m, j) => `<button onclick="useDetected(${i},${j})">${esc(m)}</button>`).join(' ') || 'no models listed'}</div>`).join('');
+      window.__detected = eps;
+    }
+    function useDetected(i, j) {
+      const e = (window.__detected || [])[i];
+      if (!e) return;
+      document.getElementById('setUrl').value = e.url;
+      document.getElementById('setModel').value = (e.models || [])[j] || '';
+      document.getElementById('setApi').value = e.api || 'openai';
+    }
+
+    async function testConnection() {
+      const msg = document.getElementById('testMsg');
+      msg.textContent = 'Testing...';
+      const r = await api('/api/test-connection', 'POST', {
+        base_url: document.getElementById('setUrl').value.trim(), model: document.getElementById('setModel').value.trim(),
+        api: document.getElementById('setApi').value, api_key: document.getElementById('setKey').value
+      });
+      msg.innerHTML = r.ok ? `<span class="okline">OK: ${esc(r.reply || 'connected')}</span>` : `<span class="errline">Failed: ${esc(r.error || 'error')}</span>`;
+    }
+
+    async function cycleApprovals() {
+      const cur = state.settings.approvals || 'ask_writes';
+      const nxt = cur === 'ask_writes' ? 'ask_all' : 'ask_writes';
+      const s = Object.assign({}, state.settings, { approvals: nxt });
+      const r = await api('/api/settings', 'POST', { settings: s });
+      if (!r.error) { state.settings = r.settings; renderTopbar(); }
+    }
+
+    // credentials
+    async function loadCreds() {
+      const r = await api('/api/credentials');
+      creds = r.credentials || [];
+      const t = document.getElementById('credTable');
+      if (!creds.length) { t.innerHTML = '<div class="help">No credentials stored yet.</div>'; return; }
+      t.innerHTML = '<table class="grid"><tr><th>Name</th><th>Kind</th><th>User</th><th>Password</th><th>SSH key</th><th>Note</th><th></th></tr>' +
+        creds.map((c, i) => `<tr><td><code>${esc(c.name)}</code></td><td>${esc(c.kind)}</td><td>${esc(c.username)}</td><td>${c.hasSecret ? '<span class="badge ok">saved</span>' : '<span class="badge">none</span>'}</td><td>${esc(c.keyPath || '')}</td><td>${esc(c.note || '')}</td>
+          <td style="white-space:nowrap;"><button onclick="editCred(${i})">Edit</button> <button class="danger" onclick="deleteCred(${i})">Delete</button></td></tr>`).join('') + '</table>';
+    }
+    function clearCredForm() {
+      editingCred = null;
+      document.getElementById('credFormTitle').textContent = 'Add a credential';
+      for (const id of ['credName', 'credUser', 'credPass', 'credKey', 'credNote']) document.getElementById(id).value = '';
+      document.getElementById('credName').disabled = false;
+      document.getElementById('credKind').value = 'windows';
+      document.getElementById('credPassLabel').textContent = 'Password';
+      document.getElementById('credPass').placeholder = '';
+      document.getElementById('credMsg').textContent = '';
+    }
+    function editCred(i) {
+      const c = creds[i];
+      if (!c) return;
+      editingCred = c.name;
+      document.getElementById('credFormTitle').textContent = 'Edit ' + c.name;
+      document.getElementById('credName').value = c.name;
+      document.getElementById('credName').disabled = true;
+      document.getElementById('credKind').value = c.kind;
+      document.getElementById('credUser').value = c.username || '';
+      document.getElementById('credPass').value = '';
+      document.getElementById('credPassLabel').textContent = 'New password';
+      document.getElementById('credPass').placeholder = c.hasSecret ? 'leave blank to keep the saved password' : '';
+      document.getElementById('credKey').value = c.keyPath || '';
+      document.getElementById('credNote').value = c.note || '';
+      document.getElementById('credMsg').textContent = '';
+    }
+    async function saveCred() {
+      const body = {
+        action: 'save', name: document.getElementById('credName').value.trim(), kind: document.getElementById('credKind').value,
+        username: document.getElementById('credUser').value.trim(), keyPath: document.getElementById('credKey').value.trim(), note: document.getElementById('credNote').value.trim()
+      };
+      const pw = document.getElementById('credPass').value;
+      if (pw) body.secret = pw;
+      const r = await api('/api/credentials', 'POST', body);
+      document.getElementById('credPass').value = '';
+      const msg = document.getElementById('credMsg');
+      if (r.error) { msg.innerHTML = `<span class="errline">${esc(r.error)}</span>`; return; }
+      clearCredForm();
+      msg.innerHTML = `<span class="okline">Saved ${esc(r.credential.name)}.</span>`;
+      await loadCreds();
+      refreshStateLight();
+    }
+    async function deleteCred(i) {
+      const c = creds[i];
+      if (!c || !confirm(`Delete the stored credential "${c.name}"?`)) return;
+      const r = await api('/api/credentials', 'POST', { action: 'delete', name: c.name });
+      if (r.error) alert(r.error);
+      clearCredForm();
+      await loadCreds();
+      refreshStateLight();
+    }
+
+    // scope
+    async function loadScope() {
+      const ws = activeWs();
+      if (!ws) return;
+      document.getElementById('scopeWsLabel').innerHTML = `For workspace <b>${esc(ws.name)}</b> (<code>${esc(ws.path)}\\.byob\\scope.json</code>).`;
+      document.getElementById('scopeErrors').innerHTML = '';
+      document.getElementById('scopeMsg').textContent = '';
+      const r = await api('/api/scope?workspaceId=' + encodeURIComponent(ws.id));
+      document.getElementById('scopeAllow').value = (r.allow || []).join('\n');
+      document.getElementById('scopeDeny').value = (r.deny || []).join('\n');
+      if (r.exists === false && r.valid === false) document.getElementById('scopeErrors').innerHTML = '<div class="errline">The scope file exists but is invalid, so nothing is allowed. Fix the entries and save.</div>';
+      else if (!r.exists) document.getElementById('scopeMsg').textContent = 'Not set yet: nothing is allowed.';
+    }
+    async function saveScope() {
+      const ws = activeWs();
+      const lines = id => document.getElementById(id).value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      const r = await api('/api/scope', 'POST', { workspaceId: ws.id, allow: lines('scopeAllow'), deny: lines('scopeDeny') });
+      const box = document.getElementById('scopeErrors');
+      if (r.error) {
+        box.innerHTML = (r.errors && r.errors.length ? r.errors : [r.error]).map(e => `<div class="errline">${esc(e)}</div>`).join('');
+        document.getElementById('scopeMsg').textContent = 'Not saved.';
+        return;
+      }
+      box.innerHTML = '';
+      document.getElementById('scopeMsg').innerHTML = `<span class="okline">Saved: ${r.allow.length} allow, ${r.deny.length} deny.</span>`;
+      refreshStateLight();
+    }
+
+    // plugins
+    async function loadPlugins() {
+      const ws = activeWs();
+      const box = document.getElementById('pluginList');
+      const r = await api('/api/plugins?workspaceId=' + encodeURIComponent(ws ? ws.id : ''));
+      if (r.error) { box.innerHTML = `<div class="errline">${esc(r.error)}</div>`; return; }
+      const list = r.plugins || [];
+      window.__plugins = list;
+      let html = `<div class="help">Format: <code>${esc(r.readme || 'plugins\\README.md')}</code>. Locations: the app's <code>plugins\\</code> folder and <code>&lt;workspace&gt;\\.byob\\plugins\\</code>.</div>`;
+      if (!list.length) html += '<div class="help">No plugins found.</div>';
+      list.forEach((p, i) => {
+        let st = '';
+        if (!p.valid) st = '<span class="badge bad">invalid</span>';
+        else if (p.trusted) st = '<span class="badge ok">trusted</span>';
+        else if (p.changed) st = '<span class="badge bad">changed since trusted</span>';
+        else st = '<span class="badge warn">untrusted</span>';
+        const tools = (p.tools || []).map(t => `<div><code>${esc(t.exposed)}</code> <span class="badge">${esc(t.access)}</span>${t.effectiveAccess !== t.access ? '<span class="badge warn">runs as ' + esc(t.effectiveAccess) + ' (asks)</span>' : ''} ${esc(t.description || '')} <span class="card-meta">script: ${esc(t.script)}</span></div>`).join('');
+        html += `<div class="card"><div class="card-title">${esc(p.name)} ${st} <span class="badge">${esc(p.location)}</span></div>
+          <div class="card-meta">${esc(p.description || '')}</div>
+          <div class="card-meta">Folder: <code>${esc(p.path)}</code></div>
+          ${p.error ? `<div class="errline">${esc(p.error)}</div>` : ''}
+          <div style="font-size:12px;margin:4px 0;">${tools}</div>
+          ${p.valid ? `<div style="display:flex;gap:6px;">${p.trusted ? `<button onclick="pluginAction(${i},'untrust')">Untrust</button>` : `<button class="danger" onclick="pluginAction(${i},'trust')">Trust (I have read its code)</button>`}</div>` : ''}</div>`;
+      });
+      box.innerHTML = html;
+    }
+    async function pluginAction(i, action) {
+      const p = (window.__plugins || [])[i];
+      if (!p) return;
+      if (action === 'trust' && !confirm(`Trust plugin "${p.name}"?\n\nIts code is NOT checked by the read-only gate. Only trust it if you have read every file in:\n${p.path}`)) return;
+      const ws = activeWs();
+      const r = await api('/api/plugins', 'POST', { action, id: p.id, hash: p.hash, workspaceId: ws ? ws.id : '' });
+      if (r.error) alert(r.error);
+      loadPlugins();
+    }
+
+    async function shutdownApp() {
+      if (!confirm('Stop BYOB Explorer? A running reply will be stopped.')) return;
+      await fetch('/__fleethacker/shutdown', { method: 'POST', headers: { 'X-FleetHacker-Shutdown': '1' } });
+      window.close();
+    }
+
+    document.getElementById('promptBox').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === ',') { e.preventDefault(); openSettings(); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); document.getElementById('chatSearch').focus(); }
+      if (e.key === 'Escape' && document.getElementById('settingsModal').classList.contains('open')) closeSettings();
+    });
+
+    loadState().then(() => refreshKb());
+  </script>
+</body>
+</html>
